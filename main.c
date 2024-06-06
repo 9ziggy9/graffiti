@@ -26,6 +26,10 @@ int main(void) {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
+  glEnable(GL_MULTISAMPLE);
+
+
 
   GLFWwindow *win = glfwCreateWindow(WIN_W, WIN_H, WIN_T, NULL, NULL);
   glScissor(50, 50, 50, 50);
@@ -37,7 +41,7 @@ int main(void) {
   glfwSetKeyCallback(win, handle_key);
   glViewport(0, 0, WIN_W, WIN_H);
 
-  SET_TARGET_FPS(1);
+  SET_TARGET_FPS(144);
 
   const GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
 
@@ -75,7 +79,6 @@ void END_FRAME(void) {
       }, NULL);
   }
 }
-
 void SET_TARGET_FPS(uint16_t fps) {
   TARGET_FPS = (double)fps;
   TARGET_FRAME_PERIOD = 1.0f / TARGET_FPS;
