@@ -7,11 +7,16 @@
 #include "shader.h"
 #include "primitives.h"
 
-#define WIN_CENTER ((vec2){WIN_W * 0.5f, WIN_H * 0.5f})
-
 void idle_until_fps_met(double);
 void glfwerr_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
+
+void BEGIN_FRAME(void);
+void END_FRAME(void);
+void SET_TARGET_FPS(uint16_t);
+static double FRAME_TIME0 = 0.0f;
+static double TARGET_FPS = DEFAULT_FPS;
+static double TARGET_FRAME_PERIOD = 1.0f / DEFAULT_FPS;
 
 int main(void) {
   if (!glfwInit()) PANIC_WITH(WINDOW_ERR_INIT_FAIL);
@@ -32,25 +37,25 @@ int main(void) {
   glfwSetKeyCallback(win, handle_key);
   glViewport(0, 0, WIN_W, WIN_H);
 
+  SET_TARGET_FPS(1);
+
   const GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
 
   float angle = 0.0f;
   while (!glfwWindowShouldClose(win)) {
-    double time0 = glfwGetTime();
+    BEGIN_FRAME();
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      OPEN_SHADER(shd);
+      draw_eqtriangle(WIN_CENTER, 0.4f, angle,
+                      0xFF0000FF, 0x00FF00FF, 0x0000FFFF);
+      CLOSE_SHADER();
 
-    OPEN_SHADER(shd);
-    draw_eqtriangle(WIN_CENTER, 0.4f, angle,
-                    0xFF0000FF, 0x00FF00FF, 0x0000FFFF);
-    CLOSE_SHADER();
+      angle += 0.05f;
 
-    angle += 0.05f;
-
-    glfwSwapBuffers(win);
-    glfwPollEvents();
-
-    idle_until_fps_met(glfwGetTime() - time0);
+      glfwSwapBuffers(win);
+      glfwPollEvents();
+    END_FRAME();
   }
 
   glDeleteProgram(shd);
@@ -59,10 +64,21 @@ int main(void) {
   exit(EXIT_SUCCESS);
 }
 
-void idle_until_fps_met(double dt) {
-  if (dt < FRAME_PERIOD) nanosleep(&(struct timespec){
-      .tv_sec = 0, .tv_nsec = (int64_t)((FRAME_PERIOD - dt) * 1e9)
-  }, NULL);
+void BEGIN_FRAME(void) { FRAME_TIME0 = glfwGetTime(); }
+void END_FRAME(void) {
+  double dt = glfwGetTime() - FRAME_TIME0;
+  if (dt < TARGET_FRAME_PERIOD) {
+    double sleep_until = TARGET_FRAME_PERIOD - dt;
+    nanosleep(&(struct timespec) {
+        .tv_nsec = (int64_t)((TARGET_FRAME_PERIOD - dt) * 1e9),
+        .tv_sec  = (time_t) sleep_until,
+      }, NULL);
+  }
+}
+
+void SET_TARGET_FPS(uint16_t fps) {
+  TARGET_FPS = (double)fps;
+  TARGET_FRAME_PERIOD = 1.0f / TARGET_FPS;
 }
 
 void glfwerr_cb(int error, const char *desc) {

@@ -17,4 +17,6 @@ typedef struct vec2 { GLfloat x; GLfloat y; } vec2;
           {0.0f,   0.0f, -1.0f, 0.0f}, \
           {-1.0f, -1.0f,  0.0f, 1.0f}}
 
+#define WIN_CENTER ((vec2){WIN_W * 0.5f, WIN_H * 0.5f})
+
 #endif // NERD_H_
