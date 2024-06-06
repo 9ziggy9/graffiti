@@ -3,12 +3,6 @@
 #include "shader.h"
 #include <math.h>
 
-#define COLOR_NORM(HEX)                     \
-    ((float)((HEX >> 24) & 0xFF) / 255.0f), \
-    ((float)((HEX >> 16) & 0xFF) / 255.0f), \
-    ((float)((HEX >> 8)  & 0xFF) / 255.0f), \
-    ((float)((HEX >> 0)  & 0xFF) / 255.0f)
- 
 void draw_eqtriangle(vec2 pos,
                      GLfloat size,
                      GLfloat theta,
@@ -17,35 +11,26 @@ void draw_eqtriangle(vec2 pos,
                      GLuint color_hex3)
 {
   static GLuint vbo = 0, vao = 0;
+
   if (vao == 0) {
-    GLfloat vertices[] = {
-      -size, -size, 0.0f,
-      size, -size, 0.0f,
-      0.0f,  size, 0.0f,
+    struct vertex vertices[] = {
+      {{-size, -size, 0.0f}, COLOR_NORM(color_hex1)},
+      {{size, -size, 0.0f},  COLOR_NORM(color_hex2)},
+      {{0.0f,  size, 0.0f},  COLOR_NORM(color_hex3)},
     };
-
-    GLfloat colors[] = {
-      COLOR_NORM(color_hex1),
-      COLOR_NORM(color_hex2),
-      COLOR_NORM(color_hex3),
-    };
-
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices) + sizeof(colors),
-                NULL, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices), sizeof(colors), colors);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                          3 * sizeof(GLfloat), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct vertex),
+                          (void *)offsetof(struct vertex, pos));
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat),
-                          (void*)sizeof(vertices));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(struct vertex),
+                          (void *)offsetof(struct vertex, color));
     glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);

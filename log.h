@@ -1,5 +1,6 @@
 #ifndef LOG_H_
 #define LOG_H_
+#include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,10 +12,12 @@
 #define COLOR_CYAN    "\x1b[36m"
 #define COLOR_RESET   "\x1b[0m"
 
+// consider using abort instead of exit--will allow for callbacks I think
 #define PANIC_WITH(CODE)                                                  \
   do {                                                                    \
-    fprintf(stdout, COLOR_RED"[PANIC]" COLOR_RESET" %s() :: ", __func__); \
-    fprintf(stdout, "%s\n", ""#CODE"");                                   \
+    fprintf(stderr, COLOR_RED"[PANIC]" COLOR_RESET" {%s} ", __FILE__);    \
+    fprintf(stderr, "%s() :: [line %d] -> ", __func__, __LINE__);         \
+    fprintf(stderr, "%s\n", ""#CODE"");                                   \
     exit(CODE);                                                           \
   } while(0)                                                              \
 

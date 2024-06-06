@@ -1,0 +1,6 @@
+
+* TODO
+[ ] Track heap allocations in static global array/stack, so that we can tear
+down in one foul stroke. This can be utilized at on_exit or sigabort stages
+[ ] Generally improve error logging
+[ ] Arena allocator, arena should encompass max memory accessible per frame
