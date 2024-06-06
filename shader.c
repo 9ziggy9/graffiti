@@ -1,5 +1,21 @@
+#include <stdbool.h>
 #include "shader.h"
 #include "log.h"
+
+static GLuint __ACTIVE_SHADER = 0;
+
+void OPEN_SHADER(GLuint shader_id) {
+  if (__ACTIVE_SHADER != 0) PANIC_WITH(SHADER_ERR_ACTIVE_SHADER);
+  glUseProgram(shader_id);
+  __ACTIVE_SHADER = shader_id;
+}
+
+void CLOSE_SHADER(void) {
+  if (__ACTIVE_SHADER == 0) PANIC_WITH(SHADER_ERR_INACTIVE_SHADER);
+  __ACTIVE_SHADER = 0;
+}
+
+GLuint SHADER(void) { return __ACTIVE_SHADER; }
 
 static const char *load_shader_src_from_path(const char *filename) {
   FILE* file = fopen(filename, "r");

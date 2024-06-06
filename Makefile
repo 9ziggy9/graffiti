@@ -1,4 +1,5 @@
 CC=gcc
+LIBS=-lm
 CFLAGS=-Wall -Wextra -Wconversion -pedantic
 GLFLAGS=-lglfw -lGL -lGLEW
 EXE=./run
@@ -12,7 +13,7 @@ all: clean main
 	$(EXE)
 
 main: $(OBJS) main.c
-	$(CC) -o $(EXE) main.c $(CFLAGS) $(GLFLAGS) $(OBJS)
+	$(CC) -o $(EXE) main.c $(CFLAGS) $(GLFLAGS) $(OBJS) $(LIBS)
 
 $(OBJS): %.o: %.c
 	$(CC) $(CFLAGS) -c $< -I$(RAYLIB_PATH)/src

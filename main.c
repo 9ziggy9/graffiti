@@ -1,16 +1,12 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include "config.h"
 #include "log.h"
 #include "shader.h"
 #include "primitives.h"
 
-#define WIN_T "test"
-#define WIN_W 640
-#define WIN_H 480
-
-#define SHADER_VS_BASE "./glsl/base.vs"
-#define SHADER_FS_BASE "./glsl/base.fs"
+#define WIN_CENTER ((vec2){WIN_W * 0.5f, WIN_H * 0.5f})
 
 void glfwerr_cb(int error, const char *desc) {
   (void) error;
@@ -29,6 +25,7 @@ int main(void) {
   glfwSetErrorCallback(glfwerr_cb);
 
   GLFWwindow *win = glfwCreateWindow(WIN_W, WIN_H, WIN_T, NULL, NULL);
+  glScissor(50, 50, 50, 50);
   if (!win) { glfwTerminate(); PANIC_WITH(WINDOW_ERR_CREATE_FAIL); }
 
   glfwMakeContextCurrent(win);
@@ -36,13 +33,18 @@ int main(void) {
 
   glfwSetKeyCallback(win, handle_key);
 
-  const GLuint shd = compile_simple_shader(SHADER_VS_BASE, SHADER_FS_BASE);
+  const GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
 
+  float angle = 0.0f;
   while (!glfwWindowShouldClose(win)) {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glUseProgram(shd);
-    draw_tricolor(1.0f, 0xFF0000FF, 0x00FF00FF, 0x0000FFFF);
+    OPEN_SHADER(shd);
+    draw_eqtriangle(WIN_CENTER, 0.4f, angle,
+                    0xFF0000FF, 0x00FF00FF, 0x0000FFFF);
+    CLOSE_SHADER();
+
+    angle += 0.005f;
 
     glfwSwapBuffers(win);
     glfwPollEvents();
