@@ -29,9 +29,8 @@ int main(void) {
   glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
   glEnable(GL_MULTISAMPLE);
 
-
-
   GLFWwindow *win = glfwCreateWindow(WIN_W, WIN_H, WIN_T, NULL, NULL);
+
   if (!win) { glfwTerminate(); PANIC_WITH(WINDOW_ERR_CREATE_FAIL); }
 
   glfwMakeContextCurrent(win);
