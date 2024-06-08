@@ -111,6 +111,7 @@ static inline void __hw_free(struct watcher *watcher) {
   do {                                                               \
     INFO_LOG("performing watch list teardown of resources ...");     \
     HeapWatch *hw = __hw_access();                                   \
+    if (hw->data == NULL) PANIC_WITH(HWALLOC_ERR_NULL_WATCHLIST);    \
     INFO_LOG("accessing heap watchlist ... ");                       \
     INFO_LOG("entering deallocation dispatcher ...");                \
     for (size_t i = 0; i < hw->sz; i++) __hw_free(&hw->data[i]);     \

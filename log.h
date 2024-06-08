@@ -14,7 +14,7 @@
 // consider using abort instead of exit--will allow for callbacks I think
 #define PANIC_WITH(CODE)                                                  \
   do {                                                                    \
-    fprintf(stderr, COLOR_RED"[PANIC]" COLOR_RESET "{%s} ", __FILE__);    \
+    fprintf(stderr, COLOR_RED"[PANIC]" COLOR_RESET " {%s} ", __FILE__);   \
     fprintf(stderr, "%s() :: [line %d] -> ", __func__, __LINE__);         \
     fprintf(stderr, "%s\n", ""#CODE"");                                   \
     exit(CODE);                                                           \
@@ -42,6 +42,7 @@ typedef enum {
   HWALLOC_ERR_EXCEEDS_MAX_MEM,
   HWALLOC_ERR_UNKNOWN_ID_TYPE,
   HWALLOC_ERR_NULL_ID,
+  HWALLOC_ERR_NULL_WATCHLIST,
 } err_t;
 
 #endif // LOG_H_

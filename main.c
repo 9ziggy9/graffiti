@@ -65,6 +65,7 @@ int main(void) {
 
   HW_TEARDOWN();
   glfwTerminate();
+  SUCCESS_LOG("program can exit successfully, good bye");
   exit(EXIT_SUCCESS);
 }
 
@@ -80,7 +81,7 @@ void END_FRAME(void) {
   }
 }
 void SET_TARGET_FPS(uint16_t fps) {
-  TARGET_FPS = (double)fps;
+  TARGET_FPS = (double) fps;
   TARGET_FRAME_PERIOD = 1.0f / TARGET_FPS;
 }
 
