@@ -6,6 +6,7 @@
 #include "log.h"
 #include "shader.h"
 #include "primitives.h"
+#include "alloc.h"
 
 void glfwerr_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
@@ -19,6 +20,7 @@ static double TARGET_FPS = DEFAULT_FPS;
 static double TARGET_FRAME_PERIOD = 1.0f / DEFAULT_FPS;
 
 int main(void) {
+  HW_INIT();
   if (!glfwInit()) PANIC_WITH(WINDOW_ERR_INIT_FAIL);
 
   glfwSetErrorCallback(glfwerr_cb);
@@ -30,8 +32,8 @@ int main(void) {
   glEnable(GL_MULTISAMPLE);
 
   GLFWwindow *win = glfwCreateWindow(WIN_W, WIN_H, WIN_T, NULL, NULL);
-
   if (!win) { glfwTerminate(); PANIC_WITH(WINDOW_ERR_CREATE_FAIL); }
+  HW_REGISTER(ID_GL_WIN_PTR, win);
 
   glfwMakeContextCurrent(win);
   if (glewInit() != GLEW_OK) PANIC_WITH(WINDOW_ERR_INIT_FAIL);
@@ -41,7 +43,8 @@ int main(void) {
 
   SET_TARGET_FPS(144);
 
-  const GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
+  GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
+  HW_REGISTER(ID_GL_SHADER_IDX, (void *) &shd);
 
   float angle = 0.0f;
   while (!glfwWindowShouldClose(win)) {
@@ -60,8 +63,7 @@ int main(void) {
     END_FRAME();
   }
 
-  glDeleteProgram(shd);
-  glfwDestroyWindow(win);
+  HW_TEARDOWN();
   glfwTerminate();
   exit(EXIT_SUCCESS);
 }

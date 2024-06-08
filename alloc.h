@@ -2,11 +2,18 @@
 #define ALLOC_H_
 #include "log.h"
 #include <stdlib.h>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
-struct watcher {
-  void *loc;
-  void (*td)(void *); 
-};
+typedef enum {
+  ID_STD_PTR,
+  ID_GL_WIN_PTR,
+  ID_GL_SHADER_IDX,
+  ID_GL_VAO_PTR,
+  ID_GL_VBO_PTR,
+} res_id_t;
+
+struct watcher { void *id; res_id_t type; };
 
 typedef struct {
   struct watcher *data;
@@ -35,15 +42,50 @@ static inline void __hw_resize(void) {
   }
 }
 
-static inline void __hw_remove(size_t idx) {
-  HeapWatch *hw = __hw_access();
-  if (hw->data[idx].td != NULL) hw->data[idx].td(hw->data[idx].loc);
-  for (size_t j = idx; j < hw->sz - 1; j++) hw->data[j] = hw->data[j + 1];
-  hw->sz--;
+static inline void __hw_free(struct watcher *watcher) {
+  if (watcher->id == NULL) PANIC_WITH(HWALLOC_ERR_NULL_ID);
+  switch (watcher->type) {
+  case ID_STD_PTR: {
+    INFO_LOG("tearing down standard allocation ...");
+    free(watcher->id);
+    watcher->id = NULL;
+  } break;
+  case ID_GL_SHADER_IDX: {
+    INFO_LOG("tearing down standard shader program ...");
+    GLuint shader_id = *((GLuint *) watcher->id);
+    if (shader_id == 0) PANIC_WITH(HWALLOC_ERR_NULL_ID);
+    glDeleteProgram(*((GLuint *) watcher->id));
+    *((GLuint *) watcher->id) = 0;
+  } break;
+  case ID_GL_WIN_PTR: {
+    INFO_LOG("tearing down GLFW window ...");
+    GLFWwindow *win_ptr = (GLFWwindow *) watcher->id;
+    if  (win_ptr == NULL) PANIC_WITH(HWALLOC_ERR_NULL_ID);
+    glfwDestroyWindow(win_ptr);
+    win_ptr = NULL;
+  } break;
+  case ID_GL_VAO_PTR: {
+    INFO_LOG("tearing vao buffer ...");
+    GLuint *vao_ptr = (GLuint *) watcher->id;
+    if (vao_ptr == NULL) PANIC_WITH(HWALLOC_ERR_NULL_ID);
+    glDeleteVertexArrays(1, vao_ptr);
+    vao_ptr = NULL;
+  } break;
+  case ID_GL_VBO_PTR: {
+    INFO_LOG("tearing vbo buffer ...");
+    GLuint *vbo_ptr = (GLuint *) watcher->id;
+    if (vbo_ptr == NULL) PANIC_WITH(HWALLOC_ERR_NULL_ID);
+    glDeleteBuffers(1, vbo_ptr);
+    vbo_ptr = NULL;
+  } break;
+  default:
+    PANIC_WITH(HWALLOC_ERR_UNKNOWN_ID_TYPE);
+  }
 }
 
 #define HW_INIT()                                                    \
   do {                                                               \
+    INFO_LOG("initializing heap watch list ...");                    \
     HeapWatch *hw = __hw_access();                                   \
     if (hw->data == NULL) {                                          \
       hw->cap  = INITIAL_HW_CAP;                                     \
@@ -54,32 +96,27 @@ static inline void __hw_remove(size_t idx) {
     } else {                                                         \
       PANIC_WITH(HWALLOC_ERR_SINGLE_INIT_VIOLATION);                 \
     }                                                                \
+    SUCCESS_LOG("heap watch list successfully initialized");         \
   } while (0)
 
-#define HW_REGISTER(LOC, TD)       \
+#define HW_REGISTER(TYPE, ID)      \
   do {                             \
     HeapWatch *hw = __hw_access(); \
     __hw_resize();                 \
-    hw->data[hw->sz].loc  = LOC;   \
-    hw->data[hw->sz++].td = TD;    \
+    hw->data[hw->sz].type = TYPE;  \
+    hw->data[hw->sz++].id   = ID;  \
   } while(0)
 
-#define HW_FREE(loc)                                         \
-  do {                                                       \
-    HeapWatch *hw = __hw_access();                           \
-    for (size_t i = 0; i < hw->sz; i++) {                    \
-      if (hw->data[i].loc == loc) { __hw_remove(i); break; } \
-    }                                                        \
-  } while (0)
-
-#define HW_TEARDOWN()                                              \
-  do {                                                             \
-    HeapWatch *hw = __hw_access();                                 \
-    for (size_t i = 0; i < hw->sz; i++) {                          \
-      if (hw->data[i].td != NULL) hw->data[i].td(hw->data[i].loc); \
-    }                                                              \
-    free(hw->data);                                                \
-    hw->data = NULL; hw->sz = 0; hw->cap = 0;                      \
+#define HW_TEARDOWN()                                                \
+  do {                                                               \
+    INFO_LOG("performing watch list teardown of resources ...");     \
+    HeapWatch *hw = __hw_access();                                   \
+    INFO_LOG("accessing heap watchlist ... ");                       \
+    INFO_LOG("entering deallocation dispatcher ...");                \
+    for (size_t i = 0; i < hw->sz; i++) __hw_free(&hw->data[i]);     \
+    free(hw->data);                                                  \
+    hw->data = NULL; hw->sz = 0; hw->cap = 0;                        \
+    SUCCESS_LOG("heap watch list teardown completed without error"); \
   } while (0)
 
 #endif // ALLOC_H_

@@ -1,6 +1,5 @@
 #ifndef LOG_H_
 #define LOG_H_
-#include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -15,10 +14,20 @@
 // consider using abort instead of exit--will allow for callbacks I think
 #define PANIC_WITH(CODE)                                                  \
   do {                                                                    \
-    fprintf(stderr, COLOR_RED"[PANIC]" COLOR_RESET" {%s} ", __FILE__);    \
+    fprintf(stderr, COLOR_RED"[PANIC]" COLOR_RESET "{%s} ", __FILE__);    \
     fprintf(stderr, "%s() :: [line %d] -> ", __func__, __LINE__);         \
     fprintf(stderr, "%s\n", ""#CODE"");                                   \
     exit(CODE);                                                           \
+  } while(0)                                                              \
+
+#define INFO_LOG(MSG)                                                     \
+  do {                                                                    \
+    fprintf(stdout, COLOR_CYAN"[INFO]" COLOR_RESET" %s \n", MSG);         \
+  } while(0)                                                              \
+
+#define SUCCESS_LOG(MSG)                                                  \
+  do {                                                                    \
+    fprintf(stdout, COLOR_GREEN"[SUCCESS]" COLOR_RESET" %s \n", MSG);     \
   } while(0)                                                              \
 
 typedef enum {
@@ -31,6 +40,8 @@ typedef enum {
   HWALLOC_ERR_OUT_OF_MEM,
   HWALLOC_ERR_SINGLE_INIT_VIOLATION,
   HWALLOC_ERR_EXCEEDS_MAX_MEM,
+  HWALLOC_ERR_UNKNOWN_ID_TYPE,
+  HWALLOC_ERR_NULL_ID,
 } err_t;
 
 #endif // LOG_H_
