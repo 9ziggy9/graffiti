@@ -88,8 +88,8 @@ void draw_eqtriangle(vec2 pos,
   model[3][0] = pos.x / WIN_W * 2 - 1;
   model[3][1] = pos.y / WIN_H * 2 - 1;
 
-  GLint modelUniformLocation = glGetUniformLocation(SHADER(), "model");
-  glUniformMatrix4fv(modelUniformLocation, 1, GL_FALSE, (GLfloat*) model);
+  GLint model_uni_loc = glGetUniformLocation(SHADER(), "model");
+  glUniformMatrix4fv(model_uni_loc, 1, GL_FALSE, (GLfloat*) model);
 
   BUFFER_DRAW(GL_TRIANGLES, 0, 3);
 }
@@ -100,23 +100,15 @@ void draw_circle(vec2 pos, GLfloat radius, GLuint color_hex) {
 
   BUFFER_CLEAR();
   struct vertex vertices[num_segments + 2];
-  vertices[0].pos[0] = 0.0f;
-  vertices[0].pos[1] = 0.0f;
-  vertices[0].pos[2] = 0.0f;
-  vertices[0].color[0] = color[0];
-  vertices[0].color[1] = color[1];
-  vertices[0].color[2] = color[2];
-  vertices[0].color[3] = color[3];
-
   for (int i = 0; i <= num_segments; i++) {
     double theta = 2.0f * M_PI * i / num_segments;
-    vertices[i + 1].pos[0] = (GLfloat)cos(theta);
-    vertices[i + 1].pos[1] = (GLfloat)sin(theta);
-    vertices[i + 1].pos[2] = 0.0f;
-    vertices[i + 1].color[0] = color[0];
-    vertices[i + 1].color[1] = color[1];
-    vertices[i + 1].color[2] = color[2];
-    vertices[i + 1].color[3] = color[3];
+    vertices[i].pos[0] = (GLfloat)cos(theta);
+    vertices[i].pos[1] = (GLfloat)sin(theta);
+    vertices[i].pos[2] = 0.0f;
+    vertices[i].color[0] = color[0];
+    vertices[i].color[1] = color[1];
+    vertices[i].color[2] = color[2];
+    vertices[i].color[3] = color[3];
   }
 
   BUFFER_BIND();
@@ -131,8 +123,8 @@ void draw_circle(vec2 pos, GLfloat radius, GLuint color_hex) {
   model[3][0] = pos.x / WIN_W * 2 - 1;
   model[3][1] = pos.y / WIN_H * 2 - 1;
 
-  GLint modelUniformLocation = glGetUniformLocation(SHADER(), "model");
-  glUniformMatrix4fv(modelUniformLocation, 1, GL_FALSE, (GLfloat*) model);
+  GLint model_uni_loc = glGetUniformLocation(SHADER(), "model");
+  glUniformMatrix4fv(model_uni_loc, 1, GL_FALSE, (GLfloat*) model);
 
   BUFFER_DRAW(GL_TRIANGLE_FAN, 0, num_segments + 2);
 }
@@ -165,8 +157,8 @@ void draw_circle_boundary(vec2 pos, GLfloat radius, GLuint color_hex) {
   model[3][0] = pos.x / WIN_W * 2 - 1;
   model[3][1] = pos.y / WIN_H * 2 - 1;
 
-  GLint modelUniformLocation = glGetUniformLocation(SHADER(), "model");
-  glUniformMatrix4fv(modelUniformLocation, 1, GL_FALSE, (GLfloat*) model);
+  GLint model_uni_loc = glGetUniformLocation(SHADER(), "model");
+  glUniformMatrix4fv(model_uni_loc, 1, GL_FALSE, (GLfloat*) model);
 
   BUFFER_DRAW(GL_LINE_LOOP, 0, num_segments);
 }
