@@ -39,28 +39,30 @@ int main(void) {
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  FRAME_TARGET_FPS(144);
-
   GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
   HW_REGISTER(ID_GL_SHADER_IDX, (void *) &shd);
 
   ENABLE_PRIMITIVES();
 
-  float angle       = 0.0f;
-  float angular_vel = 4.0f;
+
+  GLfloat angle = 0.0f;
+  GLfloat ang_vel = 5.0f;
+
   vec2 pos_cir = WIN_CENTER;
-  vec2 vel_cir = {150.0f, 150.0f};
+  vec2 vel_cir = {100.0f, 100.0f};
+
+  FRAME_TARGET_FPS(144);
 
 #define RAD 80.0f
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
 
       BEGIN_PHYSICS(dt);
+        angle += ang_vel * dt;
         pos_cir.x += vel_cir.x * dt;
         pos_cir.y += vel_cir.y * dt;
-        if (pos_cir.x - RAD < 0.0f || pos_cir.x + RAD > WIN_W) vel_cir.x *= -1;
-        if (pos_cir.y - RAD < 0.0f || pos_cir.y + RAD > WIN_H) vel_cir.y *= -1;
-        angle += angular_vel * dt;
+        if (pos_cir.x - RAD <= 0.0f || pos_cir.x + RAD >= WIN_W) vel_cir.x *=-1;
+        if (pos_cir.y - RAD <= 0.0f || pos_cir.y + RAD >= WIN_H) vel_cir.y *=-1;
       END_PHYSICS();
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
