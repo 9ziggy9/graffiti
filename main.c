@@ -51,20 +51,18 @@ int main(void) {
   vec2 pos_cir = WIN_CENTER;
   vec2 vel_cir = {100.0f, 100.0f};
 
-  FRAME_TARGET_FPS(144);
+  FRAME_TARGET_FPS(10);
 
 #define RAD 80.0f
   while (!glfwWindowShouldClose(win)) {
+    BEGIN_PHYSICS(dt);
+      angle += ang_vel * dt;
+      pos_cir.x += vel_cir.x * dt;
+      pos_cir.y += vel_cir.y * dt;
+      if (pos_cir.x - RAD <= 0.0 || pos_cir.x + RAD >= WIN_W) vel_cir.x *= -1;
+      if (pos_cir.y - RAD <= 0.0 || pos_cir.y + RAD >= WIN_H) vel_cir.y *= -1;
+    END_PHYSICS();
     BEGIN_FRAME();
-
-      BEGIN_PHYSICS(dt);
-        angle += ang_vel * dt;
-        pos_cir.x += vel_cir.x * dt;
-        pos_cir.y += vel_cir.y * dt;
-        if (pos_cir.x - RAD <= 0.0f || pos_cir.x + RAD >= WIN_W) vel_cir.x *=-1;
-        if (pos_cir.y - RAD <= 0.0f || pos_cir.y + RAD >= WIN_H) vel_cir.y *=-1;
-      END_PHYSICS();
-
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
       OPEN_SHADER(shd);
@@ -76,8 +74,6 @@ int main(void) {
 
       glfwSwapBuffers(win);
       glfwPollEvents();
-
-
     END_FRAME();
   }
 
