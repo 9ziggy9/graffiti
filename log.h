@@ -18,7 +18,7 @@
     fprintf(stderr, "%s() :: [line %d] -> ", __func__, __LINE__);         \
     fprintf(stderr, "%s\n", ""#CODE"");                                   \
     exit(CODE);                                                           \
-  } while(0)                                                              \
+  } while(0)
 
 #define INFO_LOG(MSG)                                                     \
   do {                                                                    \
@@ -43,6 +43,7 @@ typedef enum {
   HWALLOC_ERR_UNKNOWN_ID_TYPE,
   HWALLOC_ERR_NULL_ID,
   HWALLOC_ERR_NULL_WATCHLIST,
+  PRIMITIVES_ALREADY_ENABLED,
 } err_t;
 
 #endif // LOG_H_

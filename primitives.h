@@ -12,6 +12,9 @@
 
 struct vertex { GLfloat pos[3]; GLfloat color[4]; };
 
+void ENABLE_PRIMITIVES(void);
 void draw_eqtriangle(vec2, GLfloat, GLfloat, GLuint, GLuint, GLuint);
+void draw_circle(vec2 pos, GLfloat radius, GLuint color_hex);
+void draw_circle_boundary(vec2 pos, GLfloat radius, GLuint color_hex);
 
 #endif // PRIMITIVES_H_

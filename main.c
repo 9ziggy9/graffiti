@@ -29,7 +29,6 @@ int main(void) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-  glEnable(GL_MULTISAMPLE);
 
   GLFWwindow *win = glfwCreateWindow(WIN_W, WIN_H, WIN_T, NULL, NULL);
   if (!win) { glfwTerminate(); PANIC_WITH(WINDOW_ERR_CREATE_FAIL); }
@@ -41,25 +40,46 @@ int main(void) {
   glfwSetKeyCallback(win, handle_key);
   glViewport(0, 0, WIN_W, WIN_H);
 
+  glEnable(GL_MULTISAMPLE);
+  glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
+  glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
   SET_TARGET_FPS(144);
 
   GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
   HW_REGISTER(ID_GL_SHADER_IDX, (void *) &shd);
 
+  ENABLE_PRIMITIVES();
+
   float angle = 0.0f;
+  vec2 pos_cir = WIN_CENTER;
+  vec2 vel_cir = {2.0f, 2.0f};
+
+#define RAD 80.0f
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
       OPEN_SHADER(shd);
-      draw_eqtriangle(WIN_CENTER, 0.4f, angle,
-                      0xFF0000FF, 0x00FF00FF, 0x0000FFFF);
+        draw_eqtriangle(WIN_CENTER, 0.4f, angle, 0xFF0000FF,
+                                                 0x00FF00FF,
+                                                 0x0000FFFF);
+        draw_circle(pos_cir, RAD, 0xFF66FF66);
       CLOSE_SHADER();
-
-      angle += 0.05f;
 
       glfwSwapBuffers(win);
       glfwPollEvents();
+
+      angle += 0.05f;
+
+      pos_cir.x += vel_cir.x;
+      pos_cir.y += vel_cir.y;
+
+      if (pos_cir.x - RAD < 0.0f || pos_cir.x + RAD > WIN_W) vel_cir.x *= -1;
+      if (pos_cir.y - RAD < 0.0f || pos_cir.y + RAD > WIN_H) vel_cir.y *= -1;
+
     END_FRAME();
   }
 

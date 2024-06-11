@@ -4,7 +4,7 @@ CFLAGS=-Wall -Wextra -Wconversion -pedantic
 GLFLAGS=-lglfw -lGL -lGLEW
 EXE=./run
 TRASH=./run *.o *.so
-SRCS = primitives.c shader.c
+SRCS = primitives.c shader.c alloc.c
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: clean
