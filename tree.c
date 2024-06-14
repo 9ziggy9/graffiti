@@ -48,24 +48,6 @@ static bool exited_quadrant(vec2 p, vec2 p_lst, vec2 center) {
       || (dp.y < 0 && dp_lst.y >= 0) || (dp.y >= 0 && dp_lst.y < 0);
 }
 
-void qtree_update(qtree_node *node, KinematicCircle *circ, vec2 p_lst) {
-  if (exited_quadrant(circ->p, p_lst, node->center)) {
-    if (node->circ == circ) node->circ = NULL;
-    else if (node->nw != NULL) {
-      qtree_update(node->nw, circ, p_lst);
-      qtree_update(node->ne, circ, p_lst);
-      qtree_update(node->sw, circ, p_lst);
-      qtree_update(node->se, circ, p_lst);
-    }
-    qtree_insert(node, circ);
-  } else if (node->nw != NULL) {
-    qtree_update(node->nw, circ, p_lst);
-    qtree_update(node->ne, circ, p_lst);
-    qtree_update(node->sw, circ, p_lst);
-    qtree_update(node->se, circ, p_lst);
-  }
-}
-
 void qtree_query(qtree_node *node,
                  KinematicCircle *circ,
                  KinematicCircle **collisions,
@@ -107,3 +89,30 @@ void qtree_free(qtree_node *node) {
   }
   free(node);
 }
+
+bool is_within_bounds(vec2 p, vec2 center, GLfloat width, GLfloat height) {
+  return p.x >= center.x - width / 2 && p.x <= center.x + width / 2 &&
+         p.y >= center.y - height / 2 && p.y <= center.y + height / 2;
+}
+
+void qtree_update(qtree_node *node, KinematicCircle *circ, vec2 p_lst) {
+  if (exited_quadrant(circ->p, p_lst, node->center)) {
+    if (node->circ == circ) node->circ = NULL;
+    else if (node->nw != NULL) {
+      qtree_update(node->nw, circ, p_lst);
+      qtree_update(node->ne, circ, p_lst);
+      qtree_update(node->sw, circ, p_lst);
+      qtree_update(node->se, circ, p_lst);
+    }
+    qtree_insert(node, circ);
+  }
+  else if (node->nw != NULL &&
+           is_within_bounds(circ->p, node->center, node->width, node->height))
+  {
+      qtree_update(node->nw, circ, p_lst);
+      qtree_update(node->ne, circ, p_lst);
+      qtree_update(node->sw, circ, p_lst);
+      qtree_update(node->se, circ, p_lst);
+  }
+}
+
