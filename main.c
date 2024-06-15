@@ -10,6 +10,7 @@
 #include "frames.h"
 #include "colors.h"
 #include "physics.h"
+#include "tree.h"
 
 void glfwerr_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
@@ -50,7 +51,7 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(144);
 
-  #define NUM_CIRCS 500
+  #define NUM_CIRCS 50
 
   KinematicCircle circs[NUM_CIRCS];
   srand((GLuint)time(NULL));
@@ -88,7 +89,7 @@ int main(void) {
       OPEN_SHADER(shd);
         for (int n = 0; n < NUM_CIRCS; n++) {
           draw_circle(circs[n].p, circs[n].rad, circs[n].color);
-        } 
+        }
       CLOSE_SHADER();
 
       glfwSwapBuffers(win);

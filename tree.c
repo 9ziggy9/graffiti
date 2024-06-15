@@ -1,118 +1,131 @@
 #include <stdlib.h>
-#include <stdbool.h>
 
 #include "tree.h"
+#include "log.h"
 #include "nerd.h"
 
-qtree_node *qtree_create(vec2 center, GLfloat w, GLfloat h) {
+qtree_node *qtree_create(vec2 center, GLfloat width, GLfloat height) {
   qtree_node *node = (qtree_node *) malloc(sizeof(qtree_node));
+  node->center = center;
+  node->width = width;
+  node->height = height;
+  node->circs = NULL;
+  node->num_circs = 0;
+  node->cap_circs = 0;
   node->nw = node->ne = node->sw = node->se = NULL;
-  node->circ = NULL;
-  node->center = center; node->width = w; node->height = h;
   return node;
 }
 
-void qtree_insert(qtree_node *node, KinematicCircle *circ) {
-  if (node->circ == NULL) { node->circ = circ; return; }
-  if (node->nw == NULL) {
-    GLfloat half_w = 0.5f * node->width;
-    GLfloat half_h = 0.5f * node->height;
-    node->nw = qtree_create((vec2){node->center.x - half_w,
-                                   node->center.y + half_h}, half_w, half_h);
-    node->ne = qtree_create((vec2){node->center.x + half_w,
-                                   node->center.y + half_h}, half_w, half_h);
-    node->sw = qtree_create((vec2){node->center.x - half_w,
-                                   node->center.y - half_h}, half_w, half_h);
-    node->se = qtree_create((vec2){node->center.x + half_w,
-                                   node->center.y - half_h}, half_w, half_h);
+static void insert_into_leaf_node(qtree_node *n, KinematicCircle *c) {
+  if (n->num_circs >= n->cap_circs) {
+    n->cap_circs = (n->cap_circs == 0) ? 1 : n->cap_circs * 2;
+    n->circs = (KinematicCircle *)
+      realloc(n->circs, sizeof(KinematicCircle) * n->cap_circs);
+    if (n->circs == NULL) PANIC_WITH(QUADTREE_ERR_REALLOC_FAIL);
   }
-  vec2 dp = vec2sub(circ->p, node->center);
-  GLfloat left   = circ->p.x - circ->rad;
-  GLfloat right  = circ->p.x + circ->rad;
-  GLfloat top    = circ->p.y + circ->rad;
-  GLfloat bottom = circ->p.y - circ->rad;
-  if (left < node->center.x && top > node->center.y)
-    qtree_insert(node->nw, circ);
-  if (right > node->center.x && top > node->center.y)
-    qtree_insert(node->ne, circ);
-  if (left < node->center.x && bottom < node->center.y)
-    qtree_insert(node->sw, circ);
-  if (right > node->center.x && bottom < node->center.y)
-    qtree_insert(node->se, circ);
+  n->circs[n->num_circs++] = *c;
 }
 
-static bool exited_quadrant(vec2 p, vec2 p_lst, vec2 center) {
-  vec2 dp     = vec2sub(p, center);
-  vec2 dp_lst = vec2sub(p_lst, center);
-  return (dp.x < 0 && dp_lst.x >= 0) || (dp.x >= 0 && dp_lst.x < 0)
-      || (dp.y < 0 && dp_lst.y >= 0) || (dp.y >= 0 && dp_lst.y < 0);
+static void subdivide_node(qtree_node *n) {
+  n->nw = qtree_create((vec2){n->center.x - n->width / 4,
+                              n->center.y + n->height / 4},
+                              n->width / 2, n->height / 2);
+  n->ne = qtree_create((vec2){n->center.x + n->width / 4,
+                              n->center.y + n->height / 4},
+                              n->width / 2, n->height / 2);
+  n->sw = qtree_create((vec2){n->center.x - n->width / 4,
+                              n->center.y - n->height / 4},
+                              n->width / 2, n->height / 2);
+  n->se = qtree_create((vec2){n->center.x + n->width / 4,
+                              n->center.y - n->height / 4},
+                              n->width / 2, n->height / 2);
 }
 
-void qtree_query(qtree_node *node,
-                 KinematicCircle *circ,
-                 KinematicCircle **collisions,
-                 int *num_collisions)
-{
-  if (node->circ != NULL && node->circ != circ) {
-    collisions[(*num_collisions)++] = node->circ;
-  }
-  if (node->nw != NULL) {
-    vec2 dp = vec2sub(circ->p, node->center);
-    if (dp.x < 0 && dp.y > 0)
-      qtree_query(node->nw, circ, collisions, num_collisions);
-    if (dp.x > 0 && dp.y > 0)
-      qtree_query(node->ne, circ, collisions, num_collisions);
-    if (dp.x < 0 && dp.y < 0)
-      qtree_query(node->sw, circ, collisions, num_collisions);
-    if (dp.x > 0 && dp.y < 0)
-      qtree_query(node->se, circ, collisions, num_collisions);
+void qtree_insert(qtree_node *n, KinematicCircle *c) {
+  if (!circle_overlaps_quadrant(c, n)) return;
+  if (n->nw == NULL) {
+    insert_into_leaf_node(n, c);
+    if (n->num_circs > QTREE_NODE_CAPACITY) {
+      subdivide_node(n);
+      for (size_t i = 0; i < n->num_circs; i++) {
+        KinematicCircle c = n->circs[i];
+        insert_into_subtree(n, &c);
+      }
+      free(n->circs);
+      n->circs = NULL;
+      n->num_circs = 0;
+      n->cap_circs = 0;
+    }
+  } else {
+    insert_into_subtree(n, c);
   }
 }
 
-void qtree_apply_collision(qtree_node *node, KinematicCircle *circ) {
-  KinematicCircle *collisions[100];
-  int num_collisions = 0;
-  qtree_query(node, circ, collisions, &num_collisions);
-  for (int i = 0; i < num_collisions; i++) {
-    vec2 diff = vec2sub(collisions[i]->p, circ->p);
-    GLfloat overlap = circ->rad + collisions[i]->rad - vec2mag(diff);
-    if (overlap > 0.0f) {
-      physics_resolve_collision(circ, collisions[i], diff, overlap);
+static void remove_circle_from_node(qtree_node *n, KinematicCircle *c) {
+  if (n->circs != NULL) {
+    for (size_t i = 0; i < n->num_circs; i++) {
+      if (&n->circs[i] == c) {
+        n->circs[i] = n->circs[--n->num_circs];
+        if (n->num_circs == 0) {
+          free(n->circs);
+          n->circs = NULL;
+          n->cap_circs = 0;
+        }
+        break;
+      }
     }
   }
 }
 
-void qtree_free(qtree_node *node) {
-  if (node->nw != NULL) {
-    qtree_free(node->nw); qtree_free(node->ne);
-    qtree_free(node->sw); qtree_free(node->se);
-  }
-  free(node);
+static void update_circle_in_subtree(qtree_node *n, KinematicCircle *c) {
+  if (circle_overlaps_quadrant(c, n->nw)) qtree_insert(n->nw, c);
+  if (circle_overlaps_quadrant(c, n->ne)) qtree_insert(n->ne, c);
+  if (circle_overlaps_quadrant(c, n->sw)) qtree_insert(n->sw, c);
+  if (circle_overlaps_quadrant(c, n->se)) qtree_insert(n->se, c);
 }
 
-bool is_within_bounds(vec2 p, vec2 center, GLfloat width, GLfloat height) {
-  return p.x >= center.x - width / 2 && p.x <= center.x + width / 2 &&
-         p.y >= center.y - height / 2 && p.y <= center.y + height / 2;
+void qtree_update(qtree_node *n, KinematicCircle *c) {
+  remove_circle_from_node(n, c);
+  if (n->nw != NULL) update_circle_in_subtree(n, c);
+  else insert_into_leaf_node(n, c);
 }
 
-void qtree_update(qtree_node *node, KinematicCircle *circ, vec2 p_lst) {
-  if (exited_quadrant(circ->p, p_lst, node->center)) {
-    if (node->circ == circ) node->circ = NULL;
-    else if (node->nw != NULL) {
-      qtree_update(node->nw, circ, p_lst);
-      qtree_update(node->ne, circ, p_lst);
-      qtree_update(node->sw, circ, p_lst);
-      qtree_update(node->se, circ, p_lst);
+static void apply_collision(KinematicCircle *c1, KinematicCircle *c2) {
+  vec2 diff = (vec2) { c2->p.x - c1->p.x, c2->p.y - c1->p.y };
+  GLfloat overlap = c1->rad + c2->rad - vec2mag(diff);
+  if (overlap > 0.0f) physics_resolve_collision(c1, c2, diff, overlap);
+}
+
+static void apply_collisions_in_node(qtree_node *n) {
+  if (n->circs != NULL) {
+    for (size_t i = 0; i < n->num_circs; i++) {
+      for (size_t j = i + 1; j < n->num_circs; j++) {
+        apply_collision(&n->circs[i], &n->circs[j]);
+      }
     }
-    qtree_insert(node, circ);
-  }
-  else if (node->nw != NULL &&
-           is_within_bounds(circ->p, node->center, node->width, node->height))
-  {
-      qtree_update(node->nw, circ, p_lst);
-      qtree_update(node->ne, circ, p_lst);
-      qtree_update(node->sw, circ, p_lst);
-      qtree_update(node->se, circ, p_lst);
   }
 }
 
+static void apply_collisions_between_nodes(qtree_node *n1, qtree_node *n2) {
+  if (n1->circs != NULL && n2->circs != NULL) {
+    for (size_t i = 0; i < n1->num_circs; i++) {
+      for (size_t j = 0; j < n2->num_circs; j++) {
+        apply_collision(&n1->circs[i], &n2->circs[j]);
+      }
+    }
+  }
+}
+
+void qtree_apply_collisions(qtree_node *n) {
+  apply_collisions_in_node(n);
+  if (n->nw != NULL) {
+    qtree_apply_collisions(n->nw);
+    qtree_apply_collisions(n->ne);
+    qtree_apply_collisions(n->sw);
+    qtree_apply_collisions(n->se);
+    apply_collisions_between_nodes(n->nw, n->ne);
+    apply_collisions_between_nodes(n->nw, n->sw);
+    apply_collisions_between_nodes(n->ne, n->se);
+    apply_collisions_between_nodes(n->sw, n->se);
+  }
+}
