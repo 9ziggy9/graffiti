@@ -8,42 +8,18 @@
 #include "primitives.h"
 #include "alloc.h"
 #include "frames.h"
-#include "colors.h"
 #include "physics.h"
-#include "tree.h"
+#include "io.h"
 
-void glfwerr_cb(int, const char *);
+void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
-GLint get_random(int, int);
-GLuint get_random_color(void);
-GLuint get_random_color_from_palette(void);
 
 int main(void) {
   HW_INIT();
-  if (!glfwInit()) PANIC_WITH(WINDOW_ERR_INIT_FAIL);
+  WINS_INIT(window_err_cb);
 
-  glfwSetErrorCallback(glfwerr_cb);
-
-
-  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-  glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
-
-  GLFWwindow *win = glfwCreateWindow(WIN_W, WIN_H, WIN_T, NULL, NULL);
-  if (!win) { glfwTerminate(); PANIC_WITH(WINDOW_ERR_CREATE_FAIL); }
-  glfwMakeContextCurrent(win);
-  HW_REGISTER(ID_GL_WIN_PTR, win);
-
-  if (glewInit() != GLEW_OK) PANIC_WITH(WINDOW_ERR_INIT_FAIL);
-
-  glfwSetKeyCallback(win, handle_key);
-  glViewport(0, 0, WIN_W, WIN_H);
-
-  glEnable(GL_MULTISAMPLE);
-  glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
-
-  glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  GLFWwindow *win = window_create(WIN_W, WIN_H, WIN_T1);
+  window_attach_handler(win, handle_key);
 
   GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
   HW_REGISTER(ID_GL_SHADER_IDX, (void *) &shd);
@@ -52,9 +28,9 @@ int main(void) {
   FRAME_TARGET_FPS(144);
 
   #define NUM_CIRCS 50
-
   KinematicCircle circs[NUM_CIRCS];
-  srand((GLuint)time(NULL));
+
+  SEED_RANDOM(NULL);
 
   for (int n = 0; n < NUM_CIRCS; n++) {
     circs[n].p.x       = (GLfloat) get_random(0, WIN_W);
@@ -69,7 +45,6 @@ int main(void) {
   }
 
   while (!glfwWindowShouldClose(win)) {
-
     BEGIN_PHYSICS(dt);
       physics_apply_collision(circs, NUM_CIRCS);
       for (int n = 0; n < NUM_CIRCS; n++) {
@@ -86,6 +61,8 @@ int main(void) {
     BEGIN_FRAME();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+      glfwMakeContextCurrent(win);
+
       OPEN_SHADER(shd);
         for (int n = 0; n < NUM_CIRCS; n++) {
           draw_circle(circs[n].p, circs[n].rad, circs[n].color);
@@ -95,7 +72,6 @@ int main(void) {
       glfwSwapBuffers(win);
       glfwPollEvents();
     END_FRAME();
-
   }
 
   HW_TEARDOWN();
@@ -104,7 +80,7 @@ int main(void) {
   exit(EXIT_SUCCESS);
 }
 
-void glfwerr_cb(int error, const char *desc) {
+void window_err_cb(int error, const char *desc) {
   (void) error;
   fprintf(stderr, COLOR_RED"[GLFW ERROR]"COLOR_RESET" %s\n", desc);
 }
@@ -114,23 +90,4 @@ void handle_key(GLFWwindow *win, int key, int scode, int act, int mods) {
   if (key == GLFW_KEY_ESCAPE && act == GLFW_PRESS) {
     glfwSetWindowShouldClose(win, GLFW_TRUE);
   }
-}
-
-GLint get_random(int low, int high) {return (rand() % (high - low + 1)) + low;}
-
-GLuint get_random_color(void) {
-  return ((GLuint)get_random(0, 255) << 24)
-       | ((GLuint)get_random(0, 255) << 16)
-       | ((GLuint)get_random(0, 255) << 8)
-       | 0xFF; 
-}
-
-GLuint get_random_color_from_palette(void) {
-  static const GLuint color_palette[] = {
-    CLR_RED    , CLR_GREEN  , CLR_BLUE   , CLR_YELLOW , CLR_MAGENTA, CLR_CYAN  ,
-    CLR_ORANGE , CLR_PURPLE , CLR_FGREEN , CLR_NBLUE  , CLR_GRAY   , CLR_BROWN ,
-    CLR_LGREEN , CLR_SBLUE  , CLR_PINK   , CLR_AQUA   ,
-  };
-  return color_palette[get_random(0, sizeof(color_palette) /
-                                     sizeof(color_palette[0]) - 1)];
 }

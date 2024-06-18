@@ -2,6 +2,8 @@
 #define NERD_H_
 #include <GL/glew.h>
 #include <math.h>
+#include <stdlib.h>
+#include <time.h>
 
 typedef GLfloat mat4[4][4];
 
@@ -43,5 +45,11 @@ static inline vec2 vec2norm(vec2 v) {
           {-1.0f, -1.0f,  0.0f, 1.0f}}
 
 #define WIN_CENTER ((vec2){WIN_W * 0.5f, WIN_H * 0.5f})
+
+#define SEED_RANDOM(N) do { srand((GLuint) time(N)); } while(0)
+
+GLint get_random(int, int);
+GLuint get_random_color(void);
+GLuint get_random_color_from_palette(void);
 
 #endif // NERD_H_
