@@ -7,17 +7,17 @@
 
 typedef GLfloat mat4[4][4];
 
-typedef struct vec2 { GLfloat x; GLfloat y; } vec2;
+typedef struct vec2 { double x; double y; } vec2;
 
-static inline GLfloat vec2dot(vec2 v1, vec2 v2) {
+static inline double vec2dot(vec2 v1, vec2 v2) {
   return v1.x * v2.x + v1.y * v2.y;
 }
 
-static inline vec2 vec2scale(GLfloat s, vec2 v) {
+static inline vec2 vec2scale(double s, vec2 v) {
   return (vec2) { s * v.x, s * v.y };
 }
 
-static inline GLfloat vec2mag(vec2 v) { return sqrtf(vec2dot(v, v)); }
+static inline double vec2mag(vec2 v) { return sqrt(vec2dot(v, v)); }
 
 static inline vec2 vec2add(vec2 v1, vec2 v2) {
   return (vec2) { v1.x + v2.x, v1.y + v2.y };
@@ -28,7 +28,7 @@ static inline vec2 vec2sub(vec2 v1, vec2 v2) {
 }
 
 static inline vec2 vec2norm(vec2 v) {
-  GLfloat len = vec2mag(v);
+  double len = vec2mag(v);
   return (vec2) { v.x / len, v.y / len };
 }
 

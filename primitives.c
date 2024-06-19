@@ -81,12 +81,12 @@ void draw_eqtriangle(vec2 pos,
   static GLfloat ASPECT = (GLfloat) WIN_W / WIN_H;
   GLfloat cos_theta = (GLfloat) cos(theta);
   GLfloat sin_theta = (GLfloat) sin(theta);
-  model[0][0] = cos_theta / ASPECT;
+  model[0][0] = (GLfloat)cos_theta / ASPECT;
   model[0][1] = -sin_theta;
-  model[1][0] = sin_theta / ASPECT;
+  model[1][0] = (GLfloat)sin_theta / ASPECT;
   model[1][1] = cos_theta;
-  model[3][0] = pos.x / WIN_W * 2 - 1;
-  model[3][1] = pos.y / WIN_H * 2 - 1;
+  model[3][0] = (GLfloat)pos.x / WIN_W * 2 - 1;
+  model[3][1] = (GLfloat)pos.y / WIN_H * 2 - 1;
 
   GLint model_uni_loc = glGetUniformLocation(SHADER(), "model");
   glUniformMatrix4fv(model_uni_loc, 1, GL_FALSE, (GLfloat*) model);
@@ -118,10 +118,10 @@ void draw_circle(vec2 pos, GLfloat radius, GLuint color_hex) {
   BUFFER_UNBIND();
 
   mat4 model = ID_MAT4;
-  model[0][0] = radius / WIN_W * 2;
-  model[1][1] = radius / WIN_H * 2;
-  model[3][0] = pos.x / WIN_W * 2 - 1;
-  model[3][1] = pos.y / WIN_H * 2 - 1;
+  model[0][0] = (GLfloat)radius / WIN_W * 2;
+  model[1][1] = (GLfloat)radius / WIN_H * 2;
+  model[3][0] = (GLfloat)pos.x / WIN_W * 2 - 1;
+  model[3][1] = (GLfloat)pos.y / WIN_H * 2 - 1;
 
   GLint model_uni_loc = glGetUniformLocation(SHADER(), "model");
   glUniformMatrix4fv(model_uni_loc, 1, GL_FALSE, (GLfloat*) model);
@@ -154,8 +154,8 @@ void draw_circle_boundary(vec2 pos, GLfloat radius, GLuint color_hex) {
   mat4 model = ID_MAT4;
   model[0][0] = radius / WIN_W * 2;
   model[1][1] = radius / WIN_H * 2;
-  model[3][0] = pos.x / WIN_W * 2 - 1;
-  model[3][1] = pos.y / WIN_H * 2 - 1;
+  model[3][0] = (GLfloat)pos.x / WIN_W * 2 - 1;
+  model[3][1] = (GLfloat)pos.y / WIN_H * 2 - 1;
 
   GLint model_uni_loc = glGetUniformLocation(SHADER(), "model");
   glUniformMatrix4fv(model_uni_loc, 1, GL_FALSE, (GLfloat*) model);

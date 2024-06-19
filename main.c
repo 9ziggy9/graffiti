@@ -27,34 +27,39 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(144);
 
-  #define NUM_CIRCS 50
+  #define NUM_CIRCS 200
   KinematicCircle circs[NUM_CIRCS];
 
   SEED_RANDOM(NULL);
 
   for (int n = 0; n < NUM_CIRCS; n++) {
-    circs[n].p.x       = (GLfloat) get_random(0, WIN_W);
-    circs[n].p.y       = (GLfloat) get_random(0, WIN_H);
-    circs[n].dp_dt.x   = (GLfloat) get_random(-200, 200);
-    circs[n].dp_dt.y   = (GLfloat) get_random(-200, 200);
+    circs[n].p.x       = (double)get_random(0, WIN_W);
+    circs[n].p.y       = (double)get_random(0, WIN_H);
+    circs[n].dp_dt.x   = 0.0f;
+    circs[n].dp_dt.y   = 0.0f;
+    circs[n].dp_dt.x   = (double)get_random(-200, 200);
+    circs[n].dp_dt.y   = (double)get_random(-200, 200);
     circs[n].d2p_dt2.x = 0.0f;
     circs[n].d2p_dt2.y = 0.0f;
-    circs[n].m         = 5.0f;
+    circs[n].m         = (GLfloat)get_random(5.0f, 15.0f);
     circs[n].rad       = circs[n].m;
     circs[n].color     = get_random_color_from_palette();
   }
 
   while (!glfwWindowShouldClose(win)) {
     BEGIN_PHYSICS(dt);
-      physics_apply_collision(circs, NUM_CIRCS);
       for (int n = 0; n < NUM_CIRCS; n++) {
-        physics_apply_boundaries(&circs[n]);
-        circs[n].dp_dt.x += (GLfloat)0.5 * circs[n].d2p_dt2.x * dt;
-        circs[n].dp_dt.y += (GLfloat)0.5 * circs[n].d2p_dt2.y * dt;
-        circs[n].p.x += circs[n].dp_dt.x * dt;
-        circs[n].p.y += circs[n].dp_dt.y * dt;
-        circs[n].dp_dt.x += (GLfloat)0.5 * circs[n].d2p_dt2.x * dt;
-        circs[n].dp_dt.y += (GLfloat)0.5 * circs[n].d2p_dt2.y * dt;
+        circs[n].p.x += circs[n].dp_dt.x * dt + 0.5*circs[n].d2p_dt2.x*dt*dt;
+        circs[n].p.y += circs[n].dp_dt.y * dt + 0.5*circs[n].d2p_dt2.y*dt*dt;
+        circs[n].dp_dt.x += 0.5 * circs[n].d2p_dt2.x * dt;
+        circs[n].dp_dt.y += 0.5 * circs[n].d2p_dt2.y * dt;
+      }
+      physics_apply_gravity(circs, NUM_CIRCS);
+      physics_apply_collision(circs, NUM_CIRCS);
+      physics_apply_boundaries(circs, NUM_CIRCS);
+      for (int n = 0; n < NUM_CIRCS; n++) {
+        circs[n].dp_dt.x += 0.5 * circs[n].d2p_dt2.x * dt;
+        circs[n].dp_dt.y += 0.5 * circs[n].d2p_dt2.y * dt;
       }
     END_PHYSICS();
 

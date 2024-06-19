@@ -9,7 +9,7 @@ void END_FRAME(void);
 void FRAME_TARGET_FPS(uint16_t);
 
 #define BEGIN_PHYSICS(DT) ({                              \
-  GLfloat DT = 1.0f / DEFAULT_FPS;                        \
+  double DT = 1.0f / DEFAULT_FPS;                         \
   static double _t0 = 0.0f;                               \
   static double _acc = 0.0f;                              \
   double _t1 = glfwGetTime();                             \

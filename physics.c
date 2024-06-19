@@ -1,45 +1,68 @@
 #include "config.h"
 #include "physics.h"
 
-void physics_apply_boundaries(KinematicCircle *circ) {
-  if (circ->p.x - circ->rad <= 0.0) {
-    circ->dp_dt.x *= -1;
-    circ->p.x = circ->rad;
-  } else if (circ->p.x + circ->rad >= WIN_W) {
-    circ->dp_dt.x *= -1;
-    circ->p.x = WIN_W - circ->rad;
-  }
-  if (circ->p.y - circ->rad <= 0.0) {
-    circ->dp_dt.y *= -1;
-    circ->p.y = circ->rad;
-  } else if (circ->p.y + circ->rad >= WIN_H) {
-    circ->dp_dt.y *= -1;
-    circ->p.y = WIN_H - circ->rad;
+void physics_apply_gravity(KinematicCircle *circs, int num_circs) {
+  static const double G = CONST_GRAVITY;
+  for (int i = 0; i < num_circs; i++) circs[i].d2p_dt2 = (vec2) { 0.0f, 0.0f };
+  for (int i = 0; i < num_circs; i++) {
+    for (int j = i + 1; j < num_circs; j++) {
+      vec2 diff = (vec2) { circs[j].p.x - circs[i].p.x,
+                           circs[j].p.y - circs[i].p.y };
+      double r2 = vec2dot(diff, diff);
+      if (r2 > 0.0f) {
+        double r = sqrt(r2);
+        double F = G * circs[i].m * circs[j].m / r2;
+        vec2 F_dir = (vec2) { diff.x / r, diff.y / r };
+        vec2 F_vec = vec2scale(F, F_dir);
+        circs[i].d2p_dt2 = vec2add(circs[i].d2p_dt2,
+                                   vec2scale(1.0f / circs[i].m, F_vec));
+        circs[j].d2p_dt2 = vec2add(circs[j].d2p_dt2,
+                                   vec2scale(-1.0f / circs[j].m, F_vec));
+      }
+    }
   }
 }
 
-void physics_resolve_collision(KinematicCircle *c1, KinematicCircle *c2,
-                               vec2 diff, GLfloat overlap)
+void physics_apply_boundaries(KinematicCircle *circs, int num_circs) {
+  for (int i = 0; i < num_circs; i++) {
+    KinematicCircle *circ = &circs[i];
+    if (circ->p.x - circ->rad <= 0.0) {
+      circ->dp_dt.x *= -1;
+      circ->p.x = circ->rad;
+    } else if (circ->p.x + circ->rad >= WIN_W) {
+      circ->dp_dt.x *= -1;
+      circ->p.x = WIN_W - circ->rad;
+    }
+    if (circ->p.y - circ->rad <= 0.0) {
+      circ->dp_dt.y *= -1;
+      circ->p.y = circ->rad;
+    } else if (circ->p.y + circ->rad >= WIN_H) {
+      circ->dp_dt.y *= -1;
+      circ->p.y = WIN_H - circ->rad;
+    }
+  }
+}
+
+static void physics_resolve_collision(KinematicCircle *c1,
+                                      KinematicCircle *c2,
+                                      vec2 diff,
+                                      double overlap,
+                                      double e // coefficient of restitution
+                                      )
 {
   vec2 n = vec2norm(diff);
-  vec2 t = (vec2) { -n.y, n.x };
+  vec2 v1 = c1->dp_dt;
+  vec2 v2 = c2->dp_dt;
 
-  vec2 v1 = (vec2) { vec2dot(c1->dp_dt, n), vec2dot(c1->dp_dt, t) };
-  vec2 v2 = (vec2) { vec2dot(c2->dp_dt, n), vec2dot(c2->dp_dt, t) };
+  double v_rel = vec2dot(vec2sub(v2, v1), n);
+  if (v_rel < 0.0f) {
+    double j = (1.0f + e) * v_rel / (1.0f / c1->m + 1.0f / c2->m);
+    vec2 impulse = vec2scale(j, n);
+    c1->dp_dt = vec2add(c1->dp_dt, vec2scale(1.0f / c1->m, impulse));
+    c2->dp_dt = vec2sub(c2->dp_dt, vec2scale(1.0f / c2->m, impulse));
+  }
 
-  GLfloat v1_n = (v1.x * (c1->m - c2->m) + 2 * c2->m * v2.x) / (c1->m + c2->m);
-  GLfloat v2_n = (v2.x * (c2->m - c1->m) + 2 * c1->m * v1.x) / (c1->m + c2->m);
-
-  vec2 impulse_1 = vec2add(vec2scale(v1_n, n), vec2scale(v1.y, t));
-  vec2 impulse_2 = vec2add(vec2scale(v2_n, n), vec2scale(v2.y, t));
-
-  impulse_1 = vec2sub(impulse_1, c1->dp_dt);
-  impulse_2 = vec2sub(impulse_2, c2->dp_dt);
-
-  c1->dp_dt = vec2add(c1->dp_dt, impulse_1);
-  c2->dp_dt = vec2add(c2->dp_dt, impulse_2);
-
-  GLfloat corr = overlap / (c1->m + c2->m);
+  double corr = overlap / (c1->m + c2->m);
   c1->p = vec2add(c1->p, vec2scale(-corr * c1->m, n));
   c2->p = vec2add(c2->p, vec2scale(corr * c2->m, n));
 }
@@ -49,12 +72,40 @@ void physics_apply_collision(KinematicCircle *circs, int num_circs) {
     for (int j = i + 1; j < num_circs; j++) {
       vec2 diff = (vec2) { circs[j].p.x - circs[i].p.x,
                            circs[j].p.y - circs[i].p.y };
-      GLfloat overlap = circs[i].rad + circs[j].rad - vec2mag(diff);
+      double overlap = circs[i].rad + circs[j].rad - vec2mag(diff);
       if (overlap > 0.0f) physics_resolve_collision(&circs[i], &circs[j],
-                                                    diff, overlap);
+                                                    diff, overlap, 0.0001f);
     }
   }
 }
+
+double physics_compute_kinetic_energy(KinematicCircle *circs, int num_circs) {
+  double total_ke = 0.0f;
+  for (int i = 0; i < num_circs; i++) {
+    double v2 = vec2dot(circs[i].dp_dt, circs[i].dp_dt);
+    total_ke += 0.5f * circs[i].m * v2;
+  }
+  return total_ke;
+}
+
+double physics_compute_gravitational_potential_energy(KinematicCircle *circs,
+                                                       int num_circs)
+{
+  static const double G = CONST_GRAVITY;
+  double total_pe = 0.0f;
+  for (int i = 0; i < num_circs; i++) {
+    for (int j = i + 1; j < num_circs; j++) {
+      vec2 diff = (vec2) { circs[j].p.x - circs[i].p.x,
+                           circs[j].p.y - circs[i].p.y };
+      double r = vec2mag(diff);
+      if (r > 0.0f) {
+        total_pe -= G * circs[i].m * circs[j].m / r;
+      }
+    }
+  }
+  return total_pe;
+}
+
 
 #if 0 // DEPRECATED
 void physics_apply_naive_collisions(KinematicCircle *circ,
@@ -73,7 +124,7 @@ void physics_apply_naive_collisions(KinematicCircle *circ,
       vec2 v1 = (vec2) {vec2dot(circ->dp_dt, n), vec2dot(circ->dp_dt, t)};
       vec2 v2 = (vec2) {vec2dot(circs[i].dp_dt, n), vec2dot(circs[i].dp_dt, t)};
 
-      GLfloat v1_n = (v1.x * (circ->m - circs[i].m) + 2 * circs[i].m * v2.x)
+      double v1_n = (v1.x * (circ->m - circs[i].m) + 2 * circs[i].m * v2.x)
                       / (circ->m + circs[i].m);
       GLfloat v2_n = (v2.x * (circs[i].m - circ->m) + 2 * circ->m * v1.x)
                       / (circ->m + circs[i].m);
