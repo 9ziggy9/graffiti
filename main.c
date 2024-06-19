@@ -37,17 +37,18 @@ int main(void) {
     circs[n].p.y       = (double)get_random(0, WIN_H);
     circs[n].dp_dt.x   = 0.0f;
     circs[n].dp_dt.y   = 0.0f;
-    circs[n].dp_dt.x   = (double)get_random(-200, 200);
-    circs[n].dp_dt.y   = (double)get_random(-200, 200);
+    circs[n].dp_dt.x   = (double)get_random(-100, 100);
+    circs[n].dp_dt.y   = (double)get_random(-100, 100);
     circs[n].d2p_dt2.x = 0.0f;
     circs[n].d2p_dt2.y = 0.0f;
-    circs[n].m         = (GLfloat)get_random(5.0f, 15.0f);
-    circs[n].rad       = circs[n].m;
+    circs[n].m         = (GLfloat)get_random(15, 30);
+    circs[n].rad       = 4.0f;
     circs[n].color     = get_random_color_from_palette();
   }
 
   while (!glfwWindowShouldClose(win)) {
     BEGIN_PHYSICS(dt);
+      for(int n = 0; n < NUM_CIRCS; n++) circs[n].d2p_dt2 = (vec2){0.0f,0.0f};
       for (int n = 0; n < NUM_CIRCS; n++) {
         circs[n].p.x += circs[n].dp_dt.x * dt + 0.5*circs[n].d2p_dt2.x*dt*dt;
         circs[n].p.y += circs[n].dp_dt.y * dt + 0.5*circs[n].d2p_dt2.y*dt*dt;
@@ -55,12 +56,12 @@ int main(void) {
         circs[n].dp_dt.y += 0.5 * circs[n].d2p_dt2.y * dt;
       }
       physics_apply_gravity(circs, NUM_CIRCS);
-      physics_apply_collision(circs, NUM_CIRCS);
-      physics_apply_boundaries(circs, NUM_CIRCS);
       for (int n = 0; n < NUM_CIRCS; n++) {
         circs[n].dp_dt.x += 0.5 * circs[n].d2p_dt2.x * dt;
         circs[n].dp_dt.y += 0.5 * circs[n].d2p_dt2.y * dt;
       }
+      physics_apply_collision(circs, NUM_CIRCS);
+      physics_apply_boundaries(circs, NUM_CIRCS);
     END_PHYSICS();
 
     BEGIN_FRAME();

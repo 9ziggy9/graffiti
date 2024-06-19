@@ -10,7 +10,9 @@ typedef struct {
   GLuint color;
 } KinematicCircle;
 
-#define CONST_GRAVITY 2000.0f
+#define CONST_GRAVITY 1000.0f
+#define CONST_SOFT 1e-3
+#define CONST_EM_DIST 5.0f
 
 typedef struct { KinematicCircle *circs; size_t sz; size_t cap; } SpHashCell;
 

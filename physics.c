@@ -1,44 +1,42 @@
 #include "config.h"
 #include "physics.h"
+#include <stdio.h>
 
 void physics_apply_gravity(KinematicCircle *circs, int num_circs) {
   static const double G = CONST_GRAVITY;
-  for (int i = 0; i < num_circs; i++) circs[i].d2p_dt2 = (vec2) { 0.0f, 0.0f };
+  static const double soft = CONST_SOFT;
   for (int i = 0; i < num_circs; i++) {
     for (int j = i + 1; j < num_circs; j++) {
-      vec2 diff = (vec2) { circs[j].p.x - circs[i].p.x,
-                           circs[j].p.y - circs[i].p.y };
-      double r2 = vec2dot(diff, diff);
-      if (r2 > 0.0f) {
-        double r = sqrt(r2);
-        double F = G * circs[i].m * circs[j].m / r2;
-        vec2 F_dir = (vec2) { diff.x / r, diff.y / r };
-        vec2 F_vec = vec2scale(F, F_dir);
-        circs[i].d2p_dt2 = vec2add(circs[i].d2p_dt2,
-                                   vec2scale(1.0f / circs[i].m, F_vec));
-        circs[j].d2p_dt2 = vec2add(circs[j].d2p_dt2,
-                                   vec2scale(-1.0f / circs[j].m, F_vec));
-      }
+      KinematicCircle *ci = &circs[i];
+      KinematicCircle *cj = &circs[j];
+      vec2 rvec = vec2sub(cj->p, ci->p);
+      double r2 = vec2dot(rvec, rvec);
+      if (sqrt(r2) < (ci->rad + cj->rad) + CONST_EM_DIST) continue;
+      double downstairs = 1.0f / sqrt(pow(r2 + soft * soft, 3));
+      vec2 F_ij = vec2scale(G * ci->m * cj->m * downstairs, rvec);
+      ci->d2p_dt2 = vec2add(ci->d2p_dt2, vec2scale(1.0f / ci->m, F_ij));
+      cj->d2p_dt2 = vec2add(cj->d2p_dt2, vec2scale(-1.0f / cj->m, F_ij));
     }
   }
 }
 
 void physics_apply_boundaries(KinematicCircle *circs, int num_circs) {
+  static const double soft = CONST_SOFT;
   for (int i = 0; i < num_circs; i++) {
     KinematicCircle *circ = &circs[i];
     if (circ->p.x - circ->rad <= 0.0) {
       circ->dp_dt.x *= -1;
-      circ->p.x = circ->rad;
+      circ->p.x = circ->rad + soft;
     } else if (circ->p.x + circ->rad >= WIN_W) {
       circ->dp_dt.x *= -1;
-      circ->p.x = WIN_W - circ->rad;
+      circ->p.x = WIN_W - circ->rad - soft;
     }
     if (circ->p.y - circ->rad <= 0.0) {
       circ->dp_dt.y *= -1;
-      circ->p.y = circ->rad;
+      circ->p.y = circ->rad + soft;
     } else if (circ->p.y + circ->rad >= WIN_H) {
       circ->dp_dt.y *= -1;
-      circ->p.y = WIN_H - circ->rad;
+      circ->p.y = WIN_H - circ->rad - soft;
     }
   }
 }
