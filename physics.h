@@ -3,22 +3,34 @@
 #include <GL/glew.h>
 #include "nerd.h"
 
+typedef enum {
+  GEOM_NONE,
+  GEOM_CIRCLE,
+} geometry_t;
+
+typedef union {
+  void *none;
+  struct { GLfloat R; } circ;
+} Geometry;
+
 typedef struct {
-  vec2 p; vec2 dp_dt; vec2 d2p_dt2;
+  vec2 q; vec2 dq_dt; vec2 d2q_dt2;
   GLfloat m;
-  GLfloat rad;
   GLuint color;
-} KinematicCircle;
+  geometry_t geom_t;
+  Geometry geom;
+} PhysicsEntity;
 
 #define CONST_GRAVITY 0.9f
 
-typedef struct { KinematicCircle *circs; size_t sz; size_t cap; } SpHashCell;
+PhysicsEntity new_physics_entity(vec2, vec2, vec2, GLfloat, GLuint);
+void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
 
-void physics_apply_boundaries(KinematicCircle *, int);
-void physics_apply_collision(KinematicCircle *, int);
-void physics_apply_pairwise_gravity(KinematicCircle *, int);
+void physics_apply_boundaries(PhysicsEntity *, int);
+void physics_apply_collision(PhysicsEntity *, int);
+void physics_apply_pairwise_gravity(PhysicsEntity *, int);
 
-double physics_compute_gravitational_potential_energy(KinematicCircle *, int);
-double physics_compute_kinetic_energy(KinematicCircle *, int);
+double physics_compute_gravitational_potential_energy(PhysicsEntity *, int);
+double physics_compute_kinetic_energy(PhysicsEntity *, int);
 
 #endif // PHYSICS_H_

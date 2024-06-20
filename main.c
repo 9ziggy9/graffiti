@@ -13,7 +13,7 @@
 void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
 
-void update_physics(KinematicCircle* circs, int num_circs, int n) {
+void update_physics(PhysicsEntity *ps, int num_ps, int n) {
   static double t0 = 0.0f;
   static double acc = 0.0f;
   static const double dt = 1.0f / 300.0f;
@@ -21,25 +21,23 @@ void update_physics(KinematicCircle* circs, int num_circs, int n) {
   double delta_t = t1 - t0;
   t0 = t1;
   acc += delta_t;
-  double sub_dt = dt / n;
+  double _dt = dt / n;
   while (acc >= dt) {
     for (int i = 0; i < n; i++) {
-      for (int j = 0; j < num_circs; j++) circs[j].d2p_dt2 = (vec2){0.0f, 0.0f};
-      for (int j = 0; j < num_circs; j++) {
-        circs[j].p.x += circs[j].dp_dt.x * sub_dt
-          + 0.5*circs[j].d2p_dt2.x*sub_dt*sub_dt;
-        circs[j].p.y += circs[j].dp_dt.y * sub_dt
-          + 0.5*circs[j].d2p_dt2.y*sub_dt*sub_dt;
-        circs[j].dp_dt.x += 0.5 * circs[j].d2p_dt2.x * sub_dt;
-        circs[j].dp_dt.y += 0.5 * circs[j].d2p_dt2.y * sub_dt;
+      for (int j = 0; j < num_ps; j++) ps[j].d2q_dt2 = (vec2){0.0f, 0.0f};
+      for (int j = 0; j < num_ps; j++) {
+        ps[j].q.x += ps[j].dq_dt.x * _dt + 0.5 * ps[j].d2q_dt2.x * _dt * _dt;
+        ps[j].q.y += ps[j].dq_dt.y * _dt + 0.5 * ps[j].d2q_dt2.y * _dt * _dt;
+        ps[j].dq_dt.x += 0.5 * ps[j].d2q_dt2.x * _dt;
+        ps[j].dq_dt.y += 0.5 * ps[j].d2q_dt2.y * _dt;
       }
-      physics_apply_pairwise_gravity(circs, num_circs);
-      for (int j = 0; j < num_circs; j++) {
-        circs[j].dp_dt.x += 0.5 * circs[j].d2p_dt2.x * sub_dt;
-        circs[j].dp_dt.y += 0.5 * circs[j].d2p_dt2.y * sub_dt;
+      physics_apply_pairwise_gravity(ps, num_ps);
+      for (int j = 0; j < num_ps; j++) {
+        ps[j].dq_dt.x += 0.5 * ps[j].d2q_dt2.x * _dt;
+        ps[j].dq_dt.y += 0.5 * ps[j].d2q_dt2.y * _dt;
       }
-      physics_apply_collision(circs, num_circs);
-      physics_apply_boundaries(circs, num_circs);
+      physics_apply_collision(ps, num_ps);
+      physics_apply_boundaries(ps, num_ps);
     }
     acc -= dt;
   }
@@ -58,27 +56,25 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(300);
 
-  #define NUM_CIRCS 160
-  KinematicCircle circs[NUM_CIRCS];
+  #define NUM_PARTS 160
+  PhysicsEntity particles[NUM_PARTS];
 
   SEED_RANDOM(9001);
 
-  for (int n = 0; n < NUM_CIRCS; n++) {
-    circs[n].p.x       = (double)get_random(0, WIN_W);
-    circs[n].p.y       = (double)get_random(0, WIN_H);
-    circs[n].dp_dt.x   = 0.0f;
-    circs[n].dp_dt.y   = 0.0f;
-    circs[n].dp_dt.x   = (double)get_random(-2000, 2000);
-    circs[n].dp_dt.y   = (double)get_random(-2000, 2000);
-    circs[n].d2p_dt2.x = 0.0f;
-    circs[n].d2p_dt2.y = 0.0f;
-    circs[n].m         = (GLfloat)get_random(60, 120);
-    circs[n].rad       = 0.08f * circs[n].m;
-    circs[n].color     = get_random_color_from_palette();
+  for (int n = 0; n < NUM_PARTS; n++) {
+    particles[n] = new_physics_entity(
+        (vec2){(double)get_random(0, WIN_W)   , (double)get_random(0, WIN_H)},
+        (vec2){(double)get_random(-2000, 2000), (double)get_random(-2000, 2000)},
+        (vec2){0.0f, 0.0f},
+        (GLfloat)get_random(60, 120),
+        get_random_color_from_palette());
+    physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
+        .circ.R = 0.08f * particles[n].m
+    });
   }
 
   while (!glfwWindowShouldClose(win)) {
-    update_physics(circs, NUM_CIRCS, 2);
+    update_physics(particles, NUM_PARTS, 2);
 
     BEGIN_FRAME();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -86,8 +82,10 @@ int main(void) {
       glfwMakeContextCurrent(win);
 
       OPEN_SHADER(shd);
-        for (int n = 0; n < NUM_CIRCS; n++) {
-          draw_circle(circs[n].p, circs[n].rad, circs[n].color);
+        for (int n = 0; n < NUM_PARTS; n++) {
+          draw_circle(particles[n].q,
+                      particles[n].geom.circ.R,
+                      particles[n].color);
         }
       CLOSE_SHADER();
 
