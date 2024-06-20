@@ -46,7 +46,7 @@ static inline vec2 vec2norm(vec2 v) {
 
 #define WIN_CENTER ((vec2){WIN_W * 0.5f, WIN_H * 0.5f})
 
-#define SEED_RANDOM(N) do { srand((GLuint) time(N)); } while(0)
+#define SEED_RANDOM(N) do { srand(N); } while(0)
 
 GLint get_random(int, int);
 GLuint get_random_color(void);

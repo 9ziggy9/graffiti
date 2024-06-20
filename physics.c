@@ -1,19 +1,15 @@
 #include "config.h"
 #include "physics.h"
-#include <stdio.h>
 
-void physics_apply_gravity(KinematicCircle *circs, int num_circs) {
+void physics_apply_pairwise_gravity(KinematicCircle *circs, int num_circs) {
   static const double G = CONST_GRAVITY;
-  static const double soft = CONST_SOFT;
   for (int i = 0; i < num_circs; i++) {
     for (int j = i + 1; j < num_circs; j++) {
       KinematicCircle *ci = &circs[i];
       KinematicCircle *cj = &circs[j];
       vec2 rvec = vec2sub(cj->p, ci->p);
       double r2 = vec2dot(rvec, rvec);
-      if (sqrt(r2) < (ci->rad + cj->rad) + CONST_EM_DIST) continue;
-      double downstairs = 1.0f / sqrt(pow(r2 + soft * soft, 3));
-      vec2 F_ij = vec2scale(G * ci->m * cj->m * downstairs, rvec);
+      vec2 F_ij = vec2scale(G * ci->m * cj->m * (1.0f / r2), rvec);
       ci->d2p_dt2 = vec2add(ci->d2p_dt2, vec2scale(1.0f / ci->m, F_ij));
       cj->d2p_dt2 = vec2add(cj->d2p_dt2, vec2scale(-1.0f / cj->m, F_ij));
     }
@@ -21,22 +17,21 @@ void physics_apply_gravity(KinematicCircle *circs, int num_circs) {
 }
 
 void physics_apply_boundaries(KinematicCircle *circs, int num_circs) {
-  static const double soft = CONST_SOFT;
   for (int i = 0; i < num_circs; i++) {
     KinematicCircle *circ = &circs[i];
     if (circ->p.x - circ->rad <= 0.0) {
       circ->dp_dt.x *= -1;
-      circ->p.x = circ->rad + soft;
+      circ->p.x = circ->rad;
     } else if (circ->p.x + circ->rad >= WIN_W) {
       circ->dp_dt.x *= -1;
-      circ->p.x = WIN_W - circ->rad - soft;
+      circ->p.x = WIN_W - circ->rad;
     }
     if (circ->p.y - circ->rad <= 0.0) {
       circ->dp_dt.y *= -1;
-      circ->p.y = circ->rad + soft;
+      circ->p.y = circ->rad;
     } else if (circ->p.y + circ->rad >= WIN_H) {
       circ->dp_dt.y *= -1;
-      circ->p.y = WIN_H - circ->rad - soft;
+      circ->p.y = WIN_H - circ->rad;
     }
   }
 }
@@ -72,7 +67,7 @@ void physics_apply_collision(KinematicCircle *circs, int num_circs) {
                            circs[j].p.y - circs[i].p.y };
       double overlap = circs[i].rad + circs[j].rad - vec2mag(diff);
       if (overlap > 0.0f) physics_resolve_collision(&circs[i], &circs[j],
-                                                    diff, overlap, 0.0001f);
+                                                    diff, overlap, 0.33f);
     }
   }
 }

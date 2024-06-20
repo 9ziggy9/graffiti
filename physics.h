@@ -10,15 +10,13 @@ typedef struct {
   GLuint color;
 } KinematicCircle;
 
-#define CONST_GRAVITY 1000.0f
-#define CONST_SOFT 1e-3
-#define CONST_EM_DIST 5.0f
+#define CONST_GRAVITY 0.9f
 
 typedef struct { KinematicCircle *circs; size_t sz; size_t cap; } SpHashCell;
 
 void physics_apply_boundaries(KinematicCircle *, int);
 void physics_apply_collision(KinematicCircle *, int);
-void physics_apply_gravity(KinematicCircle *, int);
+void physics_apply_pairwise_gravity(KinematicCircle *, int);
 
 double physics_compute_gravitational_potential_energy(KinematicCircle *, int);
 double physics_compute_kinetic_energy(KinematicCircle *, int);
