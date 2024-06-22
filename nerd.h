@@ -27,10 +27,23 @@ static inline vec2 vec2sub(vec2 v1, vec2 v2) {
   return (vec2) {v1.x - v2.x, v1.y - v2.y};
 }
 
+static inline double vec2dist(vec2 v1, vec2 v2) {
+  return vec2mag(vec2sub(v1, v2));
+}
+
 static inline vec2 vec2norm(vec2 v) {
   double len = vec2mag(v);
   return (vec2) { v.x / len, v.y / len };
 }
+
+// TODO: this normalizes even if r is a unit, possible optimize
+static inline vec2 vec2proj(vec2 v, vec2 r) {
+  const vec2 u = vec2norm(r);
+  return vec2scale(vec2dot(v, u), u);
+}
+
+#define X_HAT (vec2) {1.0, 0.0}
+#define Y_HAT (vec2) {0.0, 1.0}
 
 #define ID_MAT4          \
          {{1, 0, 0, 0},  \

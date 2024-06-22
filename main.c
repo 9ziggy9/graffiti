@@ -9,6 +9,7 @@
 #include "frames.h"
 #include "physics.h"
 #include "io.h"
+#include "tree.h"
 
 void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
@@ -63,15 +64,24 @@ int main(void) {
 
   for (int n = 0; n < NUM_PARTS; n++) {
     particles[n] = new_physics_entity(
-        (vec2){(double)get_random(0, WIN_W)   , (double)get_random(0, WIN_H)},
-        (vec2){(double)get_random(-2000, 2000), (double)get_random(-2000, 2000)},
-        (vec2){0.0f, 0.0f},
-        (GLfloat)get_random(60, 120),
-        get_random_color_from_palette());
+      (vec2){(double)get_random(0, WIN_W)   , (double)get_random(0, WIN_H)},
+      (vec2){(double)get_random(-2000, 2000), (double)get_random(-2000, 2000)},
+      (vec2){0.0f, 0.0f},
+      (GLfloat)get_random(60, 120),
+      get_random_color_from_palette()
+    );
     physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
         .circ.R = 0.08f * particles[n].m
     });
   }
+
+  QTreeNode *qtree_root = qtree_create(WIN_CENTER, 1000);
+  qtree_insert(qtree_root, &particles[0]);
+  qtree_insert(qtree_root, &particles[1]);
+  qtree_insert(qtree_root, &particles[2]);
+  qtree_insert(qtree_root, &particles[3]);
+  qtree_insert(qtree_root, &particles[4]);
+  qtree_print_json(qtree_root, 1);
 
   while (!glfwWindowShouldClose(win)) {
     update_physics(particles, NUM_PARTS, 2);
