@@ -10,12 +10,12 @@ typedef enum {
 
 typedef union {
   void *none;
-  struct { GLfloat R; } circ;
+  struct { double R; } circ;
 } Geometry;
 
 typedef struct {
   vec2 q; vec2 dq_dt; vec2 d2q_dt2;
-  GLfloat m;
+  double m;
   GLuint color;
   geometry_t geom_t;
   Geometry geom;
@@ -23,7 +23,7 @@ typedef struct {
 
 #define CONST_GRAVITY 0.9f
 
-PhysicsEntity new_physics_entity(vec2, vec2, vec2, GLfloat, GLuint);
+PhysicsEntity new_physics_entity(vec2, vec2, vec2, double, GLuint);
 void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
 
 void physics_apply_boundaries(PhysicsEntity *, int);

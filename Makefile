@@ -16,7 +16,7 @@ main: $(OBJS) main.c
 	$(CC) -o $(EXE) main.c $(CFLAGS) $(GLFLAGS) $(OBJS) $(LIBS)
 
 $(OBJS): %.o: %.c
-	$(CC) $(CFLAGS) -c $< -I$(RAYLIB_PATH)/src
+	$(CC) $(CFLAGS) -c $<
 
 clean:
 	rm -rf $(TRASH)

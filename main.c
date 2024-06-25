@@ -57,7 +57,7 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(300);
 
-  #define NUM_PARTS 160
+  #define NUM_PARTS 6
   PhysicsEntity particles[NUM_PARTS];
 
   SEED_RANDOM(9001);
@@ -67,21 +67,22 @@ int main(void) {
       (vec2){(double)get_random(0, WIN_W)   , (double)get_random(0, WIN_H)},
       (vec2){(double)get_random(-2000, 2000), (double)get_random(-2000, 2000)},
       (vec2){0.0f, 0.0f},
-      (GLfloat)get_random(60, 120),
+      (double)get_random(60, 120),
       get_random_color_from_palette()
     );
     physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
-        .circ.R = 0.08f * particles[n].m
+        .circ.R = 0.08 * particles[n].m
     });
   }
 
-  QTreeNode *qtree_root = qtree_create(WIN_CENTER, 1000);
-  qtree_insert(qtree_root, &particles[0]);
-  qtree_insert(qtree_root, &particles[1]);
-  qtree_insert(qtree_root, &particles[2]);
-  qtree_insert(qtree_root, &particles[3]);
-  qtree_insert(qtree_root, &particles[4]);
-  qtree_print_json(qtree_root, 1);
+  BHNode *bhtree_root = bhtree_create((vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
+  bhtree_insert(bhtree_root, &particles[0]);
+  bhtree_insert(bhtree_root, &particles[1]);
+  bhtree_insert(bhtree_root, &particles[2]);
+  bhtree_insert(bhtree_root, &particles[3]);
+  bhtree_insert(bhtree_root, &particles[4]);
+  bhtree_insert(bhtree_root, &particles[5]);
+  bhtree_print(bhtree_root);
 
   while (!glfwWindowShouldClose(win)) {
     update_physics(particles, NUM_PARTS, 2);
@@ -94,7 +95,7 @@ int main(void) {
       OPEN_SHADER(shd);
         for (int n = 0; n < NUM_PARTS; n++) {
           draw_circle(particles[n].q,
-                      particles[n].geom.circ.R,
+                      (GLfloat) particles[n].geom.circ.R,
                       particles[n].color);
         }
       CLOSE_SHADER();

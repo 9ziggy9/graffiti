@@ -138,7 +138,7 @@ void draw_circle_boundary(vec2 pos, GLfloat radius, GLuint color_hex) {
     double theta = 2.0f * M_PI * i / num_segments;
     vertices[i].pos[0] = (GLfloat)cos(theta);
     vertices[i].pos[1] = (GLfloat)sin(theta);
-    vertices[i].pos[2] = 0.0f;
+    vertices[i].pos[2] = 0.0;
     vertices[i].color[0] = color[0];
     vertices[i].color[1] = color[1];
     vertices[i].color[2] = color[2];

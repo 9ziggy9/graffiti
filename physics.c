@@ -2,7 +2,7 @@
 #include "physics.h"
 
 PhysicsEntity
-new_physics_entity(vec2 q0, vec2 dq0_dt, vec2 d2q0_dt2, GLfloat m, GLuint clr) {
+new_physics_entity(vec2 q0, vec2 dq0_dt, vec2 d2q0_dt2, double m, GLuint clr) {
   return (PhysicsEntity){ q0, dq0_dt, d2q0_dt2, m, clr, GEOM_NONE, {
       .none = NULL,
   }};
