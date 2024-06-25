@@ -120,8 +120,8 @@ void draw_circle(vec2 pos, GLfloat radius, GLuint color_hex) {
   mat4 model = ID_MAT4;
   model[0][0] = (GLfloat)radius / WIN_W * 2;
   model[1][1] = (GLfloat)radius / WIN_H * 2;
-  model[3][0] = (GLfloat)pos.x / WIN_W * 2 - 1;
-  model[3][1] = (GLfloat)pos.y / WIN_H * 2 - 1;
+  model[3][0] = (GLfloat)pos.x  / WIN_W * 2 - 1;
+  model[3][1] = (GLfloat)pos.y  / WIN_H * 2 - 1;
 
   GLint model_uni_loc = glGetUniformLocation(SHADER(), "model");
   glUniformMatrix4fv(model_uni_loc, 1, GL_FALSE, (GLfloat*) model);

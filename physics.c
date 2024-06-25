@@ -31,22 +31,27 @@ void physics_apply_pairwise_gravity(PhysicsEntity *ps, int num_ps) {
 }
 
 // TODO: unhardcode circular geometry
-void physics_apply_boundaries(PhysicsEntity *ps, int num_ps) {
-  for (int i = 0; i < num_ps; i++) {
-    PhysicsEntity *p = &ps[i];
-    if (p->q.x - p->geom.circ.R <= 0.0) {
-      p->dq_dt.x *= -1;
-      p->q.x = p->geom.circ.R;
-    } else if (p->q.x + p->geom.circ.R >= WIN_W) {
-      p->dq_dt.x *= -1;
-      p->q.x = WIN_W - p->geom.circ.R;
-    }
-    if (p->q.y - p->geom.circ.R <= 0.0) {
-      p->dq_dt.y *= -1;
-      p->q.y = p->geom.circ.R;
-    } else if (p->q.y + p->geom.circ.R >= WIN_H) {
-      p->dq_dt.y *= -1;
-      p->q.y = WIN_H - p->geom.circ.R;
+void physics_apply_boundaries(PhysicsEntity *ps, int num_ps, boundary_t bconds)
+{
+  switch (bconds) {
+  case BOUNDARY_INF_BOX:
+  default:
+    for (int i = 0; i < num_ps; i++) {
+      PhysicsEntity *p = &ps[i];
+      if (p->q.x - p->geom.circ.R <= 0.0) {
+        p->dq_dt.x *= -1;
+        p->q.x = p->geom.circ.R;
+      } else if (p->q.x + p->geom.circ.R >= WIN_W) {
+        p->dq_dt.x *= -1;
+        p->q.x = WIN_W - p->geom.circ.R;
+      }
+      if (p->q.y - p->geom.circ.R <= 0.0) {
+        p->dq_dt.y *= -1;
+        p->q.y = p->geom.circ.R;
+      } else if (p->q.y + p->geom.circ.R >= WIN_H) {
+        p->dq_dt.y *= -1;
+        p->q.y = WIN_H - p->geom.circ.R;
+      }
     }
   }
 }

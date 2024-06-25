@@ -56,15 +56,37 @@ void bhtree_insert(BHNode *node, PhysicsEntity *body) {
 
 void bhtree_draw(BHNode *node) {
   if (!node) return;
-
-  for (int i = 0; i < node->body_total; i++) {
-    PhysicsEntity *body = node->bodies[i];
+  for (size_t n = 0; n < node->body_total; n++) {
+    PhysicsEntity *body = node->bodies[n];
     draw_circle(body->q, (GLfloat) body->geom.circ.R, body->color);
   }
+  for (size_t i = 0; i < MAX_CHILDREN; i++) bhtree_draw(node->children[i]);
+}
 
-  for (int i = 0; i < MAX_CHILDREN; i++) {
-    bhtree_draw(node->children[i]);
+void bhtree_clear_forces(BHNode *node) {
+  if (!node) return;
+  for (size_t n = 0; n < node->body_total; n++)
+    node->bodies[n]->d2q_dt2 = (vec2){0.0f, 0.0f};
+  for (size_t n = 0; n < MAX_CHILDREN; n++)
+    bhtree_clear_forces(node->children[n]);
+}
+
+void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
+{
+  if (!node) return;
+  for (size_t n = 0; n < node->body_total; n++) {
+    PhysicsEntity *body = node->bodies[n];
+    if (flag & VERLET_POS) {
+      body->q.x += body->dq_dt.x * dt + 0.5 * body->d2q_dt2.x * dt * dt;
+      body->q.y += body->dq_dt.y * dt + 0.5 * body->d2q_dt2.y * dt * dt;
+    }
+    if (flag & VERLET_VEL) {
+      body->dq_dt.x += 0.5 * body->d2q_dt2.x * dt;
+      body->dq_dt.y += 0.5 * body->d2q_dt2.y * dt;
+    }
   }
+  for (size_t n = 0; n < MAX_CHILDREN; n++)
+    bhtree_integrate(flag, node->children[n], dt);
 }
 
 void bhtree_print(BHNode *node) {

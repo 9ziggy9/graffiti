@@ -5,6 +5,13 @@
 
 #define MAX_CHILDREN 4
 
+// TODO: make sure different methods are exclusive
+typedef enum {
+  VERLET_POS = 1,
+  VERLET_VEL = 2,
+  VERLET_ACC = 4,
+} integration_flag;
+
 typedef struct BHNode {
   bool is_partitioned;
   struct BHNode *children[MAX_CHILDREN];
@@ -28,5 +35,7 @@ BHNode *bhtree_create(vec2, vec2);
 void bhtree_insert(BHNode *, PhysicsEntity *);
 void bhtree_print(BHNode *);
 void bhtree_draw(BHNode *);
+void bhtree_clear_forces(BHNode *);
+void bhtree_integrate(integration_flag, BHNode *, double);
 
 #endif // TREE_H_

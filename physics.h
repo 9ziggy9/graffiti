@@ -4,6 +4,11 @@
 #include "nerd.h"
 
 typedef enum {
+  BOUNDARY_INF_BOX,
+  BOUNDARY_TOROID,
+} boundary_t;
+
+typedef enum {
   GEOM_NONE,
   GEOM_CIRCLE,
 } geometry_t;
@@ -26,7 +31,7 @@ typedef struct {
 PhysicsEntity new_physics_entity(vec2, vec2, vec2, double, GLuint);
 void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
 
-void physics_apply_boundaries(PhysicsEntity *, int);
+void physics_apply_boundaries(PhysicsEntity *, int, boundary_t);
 void physics_apply_collision(PhysicsEntity *, int);
 void physics_apply_pairwise_gravity(PhysicsEntity *, int);
 

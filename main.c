@@ -14,7 +14,7 @@
 void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
 
-void update_physics(PhysicsEntity *ps, int num_ps, int n) {
+void update_physics(PhysicsEntity *ps, int num_ps, BHNode *bh) {
   static double t0 = 0.0f;
   static double acc = 0.0f;
   static const double dt = 1.0f / 300.0f;
@@ -22,25 +22,20 @@ void update_physics(PhysicsEntity *ps, int num_ps, int n) {
   double delta_t = t1 - t0;
   t0 = t1;
   acc += delta_t;
-  double _dt = dt / n;
   while (acc >= dt) {
-    for (int i = 0; i < n; i++) {
-      for (int j = 0; j < num_ps; j++) ps[j].d2q_dt2 = (vec2){0.0f, 0.0f};
-      for (int j = 0; j < num_ps; j++) {
-        ps[j].q.x += ps[j].dq_dt.x * _dt + 0.5 * ps[j].d2q_dt2.x * _dt * _dt;
-        ps[j].q.y += ps[j].dq_dt.y * _dt + 0.5 * ps[j].d2q_dt2.y * _dt * _dt;
-        ps[j].dq_dt.x += 0.5 * ps[j].d2q_dt2.x * _dt;
-        ps[j].dq_dt.y += 0.5 * ps[j].d2q_dt2.y * _dt;
-      }
-      physics_apply_pairwise_gravity(ps, num_ps);
-      for (int j = 0; j < num_ps; j++) {
-        ps[j].dq_dt.x += 0.5 * ps[j].d2q_dt2.x * _dt;
-        ps[j].dq_dt.y += 0.5 * ps[j].d2q_dt2.y * _dt;
-      }
-      physics_apply_collision(ps, num_ps);
-      physics_apply_boundaries(ps, num_ps);
-    }
+
+    bhtree_integrate(VERLET_POS | VERLET_VEL, bh, dt);
+
+    bhtree_clear_forces(bh);
+
+    physics_apply_pairwise_gravity(ps, num_ps);
+    physics_apply_collision(ps, num_ps);
+    physics_apply_boundaries(ps, num_ps, BOUNDARY_INF_BOX);
+
+    bhtree_integrate(VERLET_VEL, bh, dt);
+
     acc -= dt;
+
   }
 }
 
@@ -57,7 +52,7 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(300);
 
-  #define NUM_PARTS 200
+  #define NUM_PARTS 160
   PhysicsEntity particles[NUM_PARTS];
 
   SEED_RANDOM(9001);
@@ -78,10 +73,9 @@ int main(void) {
   BHNode *bhtree_root = bhtree_create((vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
   for (int n = 0; n < NUM_PARTS; n++) bhtree_insert(bhtree_root, &particles[n]);
 
-  bhtree_print(bhtree_root);
-
   while (!glfwWindowShouldClose(win)) {
-    update_physics(particles, NUM_PARTS, 2);
+
+    update_physics(particles, NUM_PARTS, bhtree_root);
 
     BEGIN_FRAME();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
