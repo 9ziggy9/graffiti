@@ -57,7 +57,7 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(300);
 
-  #define NUM_PARTS 6
+  #define NUM_PARTS 200
   PhysicsEntity particles[NUM_PARTS];
 
   SEED_RANDOM(9001);
@@ -76,12 +76,8 @@ int main(void) {
   }
 
   BHNode *bhtree_root = bhtree_create((vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
-  bhtree_insert(bhtree_root, &particles[0]);
-  bhtree_insert(bhtree_root, &particles[1]);
-  bhtree_insert(bhtree_root, &particles[2]);
-  bhtree_insert(bhtree_root, &particles[3]);
-  bhtree_insert(bhtree_root, &particles[4]);
-  bhtree_insert(bhtree_root, &particles[5]);
+  for (int n = 0; n < NUM_PARTS; n++) bhtree_insert(bhtree_root, &particles[n]);
+
   bhtree_print(bhtree_root);
 
   while (!glfwWindowShouldClose(win)) {
@@ -93,11 +89,12 @@ int main(void) {
       glfwMakeContextCurrent(win);
 
       OPEN_SHADER(shd);
-        for (int n = 0; n < NUM_PARTS; n++) {
-          draw_circle(particles[n].q,
-                      (GLfloat) particles[n].geom.circ.R,
-                      particles[n].color);
-        }
+        bhtree_draw(bhtree_root);
+        /* for (int n = 0; n < NUM_PARTS; n++) { */
+        /*   draw_circle(particles[n].q, */
+        /*               (GLfloat) particles[n].geom.circ.R, */
+        /*               particles[n].color); */
+        /* } */
       CLOSE_SHADER();
 
       glfwSwapBuffers(win);

@@ -27,5 +27,6 @@ static inline bool node_is_partitioned(BHNode *n) {
 BHNode *bhtree_create(vec2, vec2);
 void bhtree_insert(BHNode *, PhysicsEntity *);
 void bhtree_print(BHNode *);
+void bhtree_draw(BHNode *);
 
 #endif // TREE_H_

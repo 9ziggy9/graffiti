@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "tree.h"
+#include "primitives.h"
 
 BHNode *bhtree_create(vec2 min, vec2 max) {
   BHNode *node = (BHNode *) malloc(sizeof(BHNode));
@@ -22,8 +23,9 @@ static void node_partition(BHNode *n) {
     for (size_t j = 0; j < 2; j++) {
       vec2 dmin = vec2add(vec2scale((double)i, delta_x),
                           vec2scale((double)j, delta_y));
-      n->children[i + 2 * j] = bhtree_create(vec2add(n->min, dmin),
-                                             vec2add(delta_q, dmin));
+      vec2 new_min = vec2add(n->min, dmin);
+      vec2 new_max = vec2add(new_min, delta_q);
+      n->children[i + 2 * j] = bhtree_create(new_min, new_max);
     }
   }
   n->is_partitioned = true;
@@ -52,9 +54,21 @@ void bhtree_insert(BHNode *node, PhysicsEntity *body) {
   }
 }
 
-#define PRINT_VEC2(v) printf("{\"x\": %.2f, \"y\": %.2f}", v.x, v.y);
+void bhtree_draw(BHNode *node) {
+  if (!node) return;
+
+  for (int i = 0; i < node->body_total; i++) {
+    PhysicsEntity *body = node->bodies[i];
+    draw_circle(body->q, (GLfloat) body->geom.circ.R, body->color);
+  }
+
+  for (int i = 0; i < MAX_CHILDREN; i++) {
+    bhtree_draw(node->children[i]);
+  }
+}
 
 void bhtree_print(BHNode *node) {
+#define PRINT_VEC2(v) printf("{\"x\": %.2f, \"y\": %.2f}", v.x, v.y);
   if (!node) return;
   printf("{\n\"min\": "); PRINT_VEC2(node->min);
   printf(",\n\"max\": "); PRINT_VEC2(node->max);
@@ -79,4 +93,5 @@ void bhtree_print(BHNode *node) {
   if (node->children[MAX_CHILDREN - 1]) {
     printf(",\n");
   }
+#undef PRINT_VEC2
 }
