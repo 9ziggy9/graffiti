@@ -30,6 +30,15 @@ void physics_apply_pairwise_gravity(PhysicsEntity *ps, int num_ps) {
   }
 }
 
+void physics_apply_gravity_pairwise(PhysicsEntity *pi, PhysicsEntity *pj) {
+  static const double G = CONST_GRAVITY;
+  vec2 rvec   = vec2sub(pj->q, pi->q);
+  double r2   = vec2dot(rvec, rvec);
+  vec2 F_ij   = vec2scale(G * pi->m * pj->m * (1.0f / r2), rvec);
+  pi->d2q_dt2 = vec2add(pi->d2q_dt2, vec2scale(1.0f / pi->m, F_ij));
+  pj->d2q_dt2 = vec2add(pj->d2q_dt2, vec2scale(-1.0f / pj->m, F_ij));
+}
+
 // TODO: unhardcode circular geometry
 void physics_apply_boundaries(PhysicsEntity *ps, int num_ps, boundary_t bconds)
 {

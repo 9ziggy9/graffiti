@@ -1,6 +1,7 @@
 #ifndef TREE_H_
 #define TREE_H_
 #include "physics.h"
+
 #include <stdbool.h>
 
 #define MAX_CHILDREN 4
@@ -33,9 +34,22 @@ static inline bool node_is_partitioned(BHNode *n) {
 
 BHNode *bhtree_create(vec2, vec2);
 void bhtree_insert(BHNode *, PhysicsEntity *);
-void bhtree_print(BHNode *);
-void bhtree_draw(BHNode *);
-void bhtree_clear_forces(BHNode *);
 void bhtree_integrate(integration_flag, BHNode *, double);
+
+typedef void BH_MAPPING;
+
+#define BH_TREE_MAP_1(FN, CODE)                        \
+  BH_MAPPING FN(BHNode *node) {                        \
+    if (!node) return;                                 \
+    for (size_t n = 0; n < node->body_total; n++) CODE \
+    for (size_t n = 0; n < MAX_CHILDREN; n++)          \
+      FN(node->children[n]);                           \
+  }                                                    \
+
+BH_MAPPING bhtree_draw(BHNode *);
+BH_MAPPING bhtree_clear_forces(BHNode *);
+BH_MAPPING bhtree_apply_boundaries(BHNode *);
+BH_MAPPING bhtree_print(BHNode *);
+
 
 #endif // TREE_H_

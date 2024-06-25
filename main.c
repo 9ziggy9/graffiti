@@ -30,7 +30,9 @@ void update_physics(PhysicsEntity *ps, int num_ps, BHNode *bh) {
 
     physics_apply_pairwise_gravity(ps, num_ps);
     physics_apply_collision(ps, num_ps);
-    physics_apply_boundaries(ps, num_ps, BOUNDARY_INF_BOX);
+    /* physics_apply_boundaries(ps, num_ps, BOUNDARY_INF_BOX); */
+
+    bhtree_apply_boundaries(bh);
 
     bhtree_integrate(VERLET_VEL, bh, dt);
 

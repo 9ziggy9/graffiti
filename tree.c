@@ -1,18 +1,35 @@
-#include <stdio.h>
 #include "tree.h"
 #include "primitives.h"
+#include "config.h"
 
-BHNode *bhtree_create(vec2 min, vec2 max) {
-  BHNode *node = (BHNode *) malloc(sizeof(BHNode));
-  node->min = min; node->max = max;
-  node->body_total = 0; node->is_partitioned = false;
-  node->cm = (vec2){0.0, 0.0}; node->m = 0.0;
-  for (int n = 0; n < MAX_CHILDREN; n++) {
-    node->children[n] = NULL;
-    node->bodies[n]   = NULL;
+#include <stdio.h>
+
+BH_TREE_MAP_1(bhtree_draw, {
+  PhysicsEntity *body = node->bodies[n];
+  draw_circle(body->q, (GLfloat) body->geom.circ.R, body->color);
+})
+
+BH_TREE_MAP_1(bhtree_clear_forces, {
+  node->bodies[n]->d2q_dt2 = ((vec2){0.0f, 0.0f});
+})
+
+BH_TREE_MAP_1(bhtree_apply_boundaries, {
+  PhysicsEntity *body = node->bodies[n];
+  if (body->q.x - body->geom.circ.R <= 0.0) {
+    body->dq_dt.x *= -1;
+    body->q.x = body->geom.circ.R;
+  } else if (body->q.x + body->geom.circ.R >= WIN_W) {
+    body->dq_dt.x *= -1;
+    body->q.x = WIN_W - body->geom.circ.R;
   }
-  return node;
-}
+  if (body->q.y - body->geom.circ.R <= 0.0) {
+    body->dq_dt.y *= -1;
+    body->q.y = body->geom.circ.R;
+  } else if (body->q.y + body->geom.circ.R >= WIN_H) {
+    body->dq_dt.y *= -1;
+    body->q.y = WIN_H - body->geom.circ.R;
+  }
+})
 
 static void node_partition(BHNode *n) {
   vec2 delta_r = vec2sub(n->max, n->min);
@@ -41,6 +58,18 @@ static vec2 compute_cm(PhysicsEntity *bodies[], size_t body_total) {
   return vec2scale((1 / M), cm);
 }
 
+BHNode *bhtree_create(vec2 min, vec2 max) {
+  BHNode *node = (BHNode *) malloc(sizeof(BHNode));
+  node->min = min; node->max = max;
+  node->body_total = 0; node->is_partitioned = false;
+  node->cm = (vec2){0.0, 0.0}; node->m = 0.0;
+  for (int n = 0; n < MAX_CHILDREN; n++) {
+    node->children[n] = NULL;
+    node->bodies[n]   = NULL;
+  }
+  return node;
+}
+
 void bhtree_insert(BHNode *node, PhysicsEntity *body) {
   if (!body_in_bounds(node, body)) return;
   if (node->body_total < MAX_CHILDREN) {
@@ -52,23 +81,6 @@ void bhtree_insert(BHNode *node, PhysicsEntity *body) {
     for (size_t n = 0; n < MAX_CHILDREN; n++)
       bhtree_insert(node->children[n], body);
   }
-}
-
-void bhtree_draw(BHNode *node) {
-  if (!node) return;
-  for (size_t n = 0; n < node->body_total; n++) {
-    PhysicsEntity *body = node->bodies[n];
-    draw_circle(body->q, (GLfloat) body->geom.circ.R, body->color);
-  }
-  for (size_t i = 0; i < MAX_CHILDREN; i++) bhtree_draw(node->children[i]);
-}
-
-void bhtree_clear_forces(BHNode *node) {
-  if (!node) return;
-  for (size_t n = 0; n < node->body_total; n++)
-    node->bodies[n]->d2q_dt2 = (vec2){0.0f, 0.0f};
-  for (size_t n = 0; n < MAX_CHILDREN; n++)
-    bhtree_clear_forces(node->children[n]);
 }
 
 void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
