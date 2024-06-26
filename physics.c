@@ -5,7 +5,7 @@ PhysicsEntity
 new_physics_entity(vec2 q0, vec2 dq0_dt, vec2 d2q0_dt2, double m, GLuint clr) {
   return (PhysicsEntity){ q0, dq0_dt, d2q0_dt2, m, clr, GEOM_NONE, {
       .none = NULL,
-  }};
+    }, NULL, 0};
 }
 
 void
@@ -15,26 +15,55 @@ physics_entity_bind_geometry(PhysicsEntity *entity, geometry_t type, Geometry g)
   entity->geom   = g;
 }
 
+PhysicsSystem
+new_physics_system(size_t num_entities, PhysicsEntity *entities, ...)
+{
+  va_list args;
+  va_start(args, entities);
+    size_t forces_total = 0; 
+    force_fn force;
+    while ((force = va_arg(args, force_fn)) != NULL) forces_total++;
+  va_end(args);
+    
+  force_fn *forces = (force_fn *)malloc(forces_total * sizeof(force_fn));
+
+  va_start(args, entities); 
+    for (size_t i = 0; i < forces_total; i++) forces[i] = va_arg(args,force_fn);
+  va_end(args);
+
+  return (PhysicsSystem) { entities, num_entities, forces, forces_total };
+}
+
 void physics_apply_pairwise_gravity(PhysicsEntity *ps, int num_ps) {
-  static const double G = CONST_GRAVITY;
   for (int i = 0; i < num_ps; i++) {
     for (int j = i + 1; j < num_ps; j++) {
       PhysicsEntity *ci = &ps[i];
       PhysicsEntity *cj = &ps[j];
-      vec2 rvec = vec2sub(cj->q, ci->q);
-      double r2 = vec2dot(rvec, rvec);
-      vec2 F_ij = vec2scale(G * ci->m * cj->m * (1.0f / r2), rvec);
+      vec2 rvec   = vec2sub(cj->q, ci->q);
+      double r2   = vec2dot(rvec, rvec);
+      vec2 F_ij   = vec2scale(ci->m * cj->m * (1.0f / r2), rvec);
       ci->d2q_dt2 = vec2add(ci->d2q_dt2, vec2scale(1.0f / ci->m, F_ij));
       cj->d2q_dt2 = vec2add(cj->d2q_dt2, vec2scale(-1.0f / cj->m, F_ij));
     }
   }
 }
 
-void physics_apply_gravity_pairwise(PhysicsEntity *pi, PhysicsEntity *pj) {
-  static const double G = CONST_GRAVITY;
+void forces_apply_pairwise(PhysicsSystem *ps) {
+  for (int i = 0; i < ps->num_entities; i++) {
+    for (int j = i + 1; j < ps->num_entities; j++) {
+      PhysicsEntity *pi = &ps->entities[i];
+      PhysicsEntity *pj = &ps->entities[j];   
+      for (size_t f = 0; f < ps->forces_total; f++) {
+        ps->forces[f](pi, pj); ps->forces[f](pj, pi);
+      }
+    }
+  } 
+}
+
+void force_pairwise_gravity(PhysicsEntity *pi, PhysicsEntity *pj) {
   vec2 rvec   = vec2sub(pj->q, pi->q);
   double r2   = vec2dot(rvec, rvec);
-  vec2 F_ij   = vec2scale(G * pi->m * pj->m * (1.0f / r2), rvec);
+  vec2 F_ij   = vec2scale(pi->m * pj->m * (1.0f / r2), rvec);
   pi->d2q_dt2 = vec2add(pi->d2q_dt2, vec2scale(1.0f / pi->m, F_ij));
   pj->d2q_dt2 = vec2add(pj->d2q_dt2, vec2scale(-1.0f / pj->m, F_ij));
 }
@@ -113,16 +142,13 @@ double physics_compute_kinetic_energy(PhysicsEntity *circs, int num_circs) {
 double physics_compute_gravitational_potential_energy(PhysicsEntity *circs,
                                                        int num_circs)
 {
-  static const double G = CONST_GRAVITY;
   double total_pe = 0.0f;
   for (int i = 0; i < num_circs; i++) {
     for (int j = i + 1; j < num_circs; j++) {
       vec2 diff = (vec2) { circs[j].q.x - circs[i].q.x,
                            circs[j].q.y - circs[i].q.y };
       double r = vec2mag(diff);
-      if (r > 0.0f) {
-        total_pe -= G * circs[i].m * circs[j].m / r;
-      }
+      if (r > 0.0f) total_pe -= circs[i].m * circs[j].m / r;
     }
   }
   return total_pe;

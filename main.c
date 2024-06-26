@@ -14,7 +14,7 @@
 void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
 
-void update_physics(PhysicsEntity *ps, int num_ps, BHNode *bh) {
+void update_physics(PhysicsSystem *sys, BHNode *bh) {
   static double t0 = 0.0f;
   static double acc = 0.0f;
   static const double dt = 1.0f / 300.0f;
@@ -28,9 +28,8 @@ void update_physics(PhysicsEntity *ps, int num_ps, BHNode *bh) {
 
     bhtree_clear_forces(bh);
 
-    physics_apply_pairwise_gravity(ps, num_ps);
-    physics_apply_collision(ps, num_ps);
-    /* physics_apply_boundaries(ps, num_ps, BOUNDARY_INF_BOX); */
+    forces_apply_pairwise(sys);
+    physics_apply_collision(sys->entities, sys->num_entities);
 
     bhtree_apply_boundaries(bh);
 
@@ -54,10 +53,10 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(300);
 
+  SEED_RANDOM(9001);
+
   #define NUM_PARTS 160
   PhysicsEntity particles[NUM_PARTS];
-
-  SEED_RANDOM(9001);
 
   for (int n = 0; n < NUM_PARTS; n++) {
     particles[n] = new_physics_entity(
@@ -72,12 +71,16 @@ int main(void) {
     });
   }
 
+  PhysicsSystem sys = new_physics_system(NUM_PARTS, particles,
+                                         force_pairwise_gravity,
+                                         NULL);
+
   BHNode *bhtree_root = bhtree_create((vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
   for (int n = 0; n < NUM_PARTS; n++) bhtree_insert(bhtree_root, &particles[n]);
 
   while (!glfwWindowShouldClose(win)) {
 
-    update_physics(particles, NUM_PARTS, bhtree_root);
+    update_physics(&sys, bhtree_root);
 
     BEGIN_FRAME();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
