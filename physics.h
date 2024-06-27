@@ -31,6 +31,8 @@ typedef struct PhysicsSystem {
 } PhysicsSystem;
 
 void forces_apply_internal(PhysicsSystem *);
+void forces_apply_external(PhysicsSystem *);
+
 void force_pairwise_gravity(PhysicsEntity *, PhysicsEntity *);
 void force_pairwise_impulsive_collision(PhysicsEntity *, PhysicsEntity *);
 
@@ -41,5 +43,19 @@ void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
 #define new_physics_system(N, E, ...) \
   _new_physics_system(N, E, __NULL_SENT(__VA_ARGS__))
 PhysicsSystem _new_physics_system(size_t, PhysicsEntity *, ...);
+
+#define BEGIN_PHYSICS(DT)                       \
+  static double __t0 = 0.0f;                    \
+  static double __acc = 0.0f;                   \
+  static const double __dt = 1.0f / 300.0f;     \
+  static const double DT = __dt;                \
+  double __t1 = glfwGetTime();                  \
+  double __delta_t = __t1 - __t0;               \
+  __t0 = __t1;                                  \
+  __acc += __delta_t;                           \
+  while (__acc >= __dt) {                       
+#define END_PHYSICS()                           \
+  __acc -= __dt;                                \
+  }
 
 #endif // PHYSICS_H_

@@ -14,29 +14,6 @@
 void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
 
-void update_physics(PhysicsSystem *sys, BHNode *bh) {
-  static double t0 = 0.0f;
-  static double acc = 0.0f;
-  static const double dt = 1.0f / 300.0f;
-  double t1 = glfwGetTime();
-  double delta_t = t1 - t0;
-  t0 = t1;
-  acc += delta_t;
-  while (acc >= dt) {
-
-    bhtree_integrate(VERLET_POS | VERLET_VEL, bh, dt);
-    bhtree_clear_forces(bh);
-
-    forces_apply_internal(sys);
-
-    bhtree_apply_boundaries(bh);
-    bhtree_integrate(VERLET_VEL, bh, dt);
-
-    acc -= dt;
-
-  }
-}
-
 int main(void) {
   HW_INIT();
   WINS_INIT(window_err_cb);
@@ -76,8 +53,13 @@ int main(void) {
   for (int n = 0; n < NUM_PARTS; n++) bhtree_insert(bhtree_root, &particles[n]);
 
   while (!glfwWindowShouldClose(win)) {
-
-    update_physics(&sys, bhtree_root);
+    BEGIN_PHYSICS(dt);
+      bhtree_integrate(VERLET_POS | VERLET_VEL, bhtree_root, dt);
+      bhtree_clear_forces(bhtree_root);
+      forces_apply_internal(&sys);
+      bhtree_apply_boundaries(bhtree_root);
+      bhtree_integrate(VERLET_VEL, bhtree_root, dt);
+    END_PHYSICS();
 
     BEGIN_FRAME();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
