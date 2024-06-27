@@ -1,4 +1,5 @@
 #include "alloc.h"
+#include "log.h"
 
 static inline HeapWatch *__hw_access(void) {
   static HeapWatch __hw = {NULL, 0, 0};
@@ -89,4 +90,32 @@ void HW_TEARDOWN(void) {
   free(hw->data);
   hw->data = NULL; hw->sz = 0; hw->cap = 0;
   SUCCESS_LOG("heap watch list teardown completed without error");
+}
+
+MemoryArena *arena_init(size_t bytes) {
+  MemoryArena *arena = malloc(sizeof(MemoryArena));
+  if (!arena) PANIC_WITH(ARENA_INIT_STRUCT_MALLOC_FAIL);
+  arena->size = bytes;
+  arena->used = 0;
+  arena->mem  = malloc(bytes);
+  if (arena->mem == NULL) PANIC_WITH(ARENA_INIT_MEM_MALLOC_FAIL);
+  return arena;
+}
+
+void *arena_alloc(MemoryArena *arena, size_t size) {
+    if (arena->used + size > arena->size) PANIC_WITH(ARENA_ALLOC_SIZE_OVERFLOW);
+    void *ptr = (char*)arena->mem + arena->used;
+    arena->used += size;
+    return ptr;
+}
+
+void arena_reset(MemoryArena *arena) { arena->used = 0; }
+
+void arena_free(MemoryArena *arena) {
+    free(arena->mem);
+    arena->mem = NULL;
+    arena->size = 0;
+    arena->used = 0;
+    free(arena);
+    arena = NULL;
 }

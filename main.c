@@ -14,6 +14,26 @@
 void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
 
+
+PhysicsSystem gen_n_particle_system(size_t N) {
+  PhysicsEntity *particles = (PhysicsEntity *)malloc(N * sizeof(PhysicsEntity));
+  for (size_t n = 0; n < N; n++) {
+    particles[n] = new_physics_entity(
+      (vec2){(double)get_random(0, WIN_W)   , (double)get_random(0, WIN_H)},
+      (vec2){(double)get_random(-2000, 2000), (double)get_random(-2000, 2000)},
+      (vec2){0.0f, 0.0f},
+      (double)get_random(60, 120),
+      get_random_color_from_palette()
+    );
+    physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
+        .circ.R = 0.08 * particles[n].m
+    });
+  }
+  return new_physics_system(N, particles,
+                            force_pairwise_gravity,
+                            force_pairwise_impulsive_collision);
+}
+
 int main(void) {
   HW_INIT();
   WINS_INIT(window_err_cb);
@@ -29,52 +49,42 @@ int main(void) {
 
   SEED_RANDOM(9001);
 
-  #define NUM_PARTS 160
-  PhysicsEntity particles[NUM_PARTS];
+  // 1 MB per frame
+  #define FRAME_MEMORY_SIZE 1024 * 1024
+  MemoryArena *FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE);
 
-  for (int n = 0; n < NUM_PARTS; n++) {
-    particles[n] = new_physics_entity(
-      (vec2){(double)get_random(0, WIN_W)   , (double)get_random(0, WIN_H)},
-      (vec2){(double)get_random(-2000, 2000), (double)get_random(-2000, 2000)},
-      (vec2){0.0f, 0.0f},
-      (double)get_random(60, 120),
-      get_random_color_from_palette()
-    );
-    physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
-        .circ.R = 0.08 * particles[n].m
-    });
-  }
-
-  PhysicsSystem sys = new_physics_system(NUM_PARTS, particles,
-                                         force_pairwise_gravity,
-                                         force_pairwise_impulsive_collision);
-
-  BHNode *bhtree_root = bhtree_create((vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
-  for (int n = 0; n < NUM_PARTS; n++) bhtree_insert(bhtree_root, &particles[n]);
+  #define NUM_PS 160
+  PhysicsSystem sys = gen_n_particle_system(NUM_PS);
 
   while (!glfwWindowShouldClose(win)) {
+    BHSystem systree = new_bh_system(
+      FRAME_ARENA,
+      bhtree_build_in_arena(FRAME_ARENA, sys.entities, sys.num_entities),
+      force_pairwise_gravity,
+      force_pairwise_impulsive_collision
+    );
     BEGIN_PHYSICS(dt);
-      bhtree_integrate(VERLET_POS | VERLET_VEL, bhtree_root, dt);
-      bhtree_clear_forces(bhtree_root);
+      bhtree_integrate(VERLET_POS | VERLET_VEL, systree.root, dt);
+      bhtree_clear_forces(systree.root);
       forces_apply_internal(&sys);
-      bhtree_apply_boundaries(bhtree_root);
-      bhtree_integrate(VERLET_VEL, bhtree_root, dt);
+      bhtree_apply_boundaries(systree.root);
+      bhtree_integrate(VERLET_VEL, systree.root, dt);
     END_PHYSICS();
 
     BEGIN_FRAME();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
       glfwMakeContextCurrent(win);
-
       OPEN_SHADER(shd);
-        bhtree_draw(bhtree_root);
+        bhtree_draw(systree.root);
       CLOSE_SHADER();
-
       glfwSwapBuffers(win);
       glfwPollEvents();
     END_FRAME();
+
+    arena_reset(FRAME_ARENA);
   }
 
+  arena_free(FRAME_ARENA);
   HW_TEARDOWN();
   glfwTerminate();
   SUCCESS_LOG("program can exit successfully, good bye");

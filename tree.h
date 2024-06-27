@@ -1,7 +1,9 @@
 #ifndef TREE_H_
 #define TREE_H_
-#include <stdbool.h>
 #include "physics.h"
+#include "alloc.h"
+
+#include <stdbool.h>
 
 #define MAX_CHILDREN 4
 
@@ -36,24 +38,23 @@ static inline bool node_is_partitioned(BHNode *n) {
   return n->children[0] != NULL;
 }
 
-BHNode *bhtree_create(vec2, vec2);
+BHNode *bhtree_create(MemoryArena *, vec2, vec2);
+BHNode *bhtree_build_in_arena(MemoryArena *, PhysicsEntity *, size_t);
 
-#define new_bh_system(T, ...) _new_bh_system(T, __NULL_SENT(__VA_ARGS__))
-BHSystem _new_bh_system(BHNode *, ...);
+#define new_bh_system(A, T, ...) _new_bh_system(A, T, __NULL_SENT(__VA_ARGS__))
+BHSystem _new_bh_system(MemoryArena *, BHNode *, ...);
 
-void bhtree_insert(BHNode *, PhysicsEntity *);
+void bhtree_insert(MemoryArena *, BHNode *, PhysicsEntity *);
 void bhtree_integrate(integration_flag, BHNode *, double);
 
 typedef void BH_MAPPING;
-
 #define BH_TREE_MAP_1(FN, CODE)                        \
   BH_MAPPING FN(BHNode *node) {                        \
     if (!node) return;                                 \
     for (size_t n = 0; n < node->body_total; n++) CODE \
     for (size_t n = 0; n < MAX_CHILDREN; n++)          \
       FN(node->children[n]);                           \
-  }                                                    \
-
+  }                                                    
 BH_MAPPING bhtree_draw(BHNode *);
 BH_MAPPING bhtree_clear_forces(BHNode *);
 BH_MAPPING bhtree_apply_boundaries(BHNode *);

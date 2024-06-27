@@ -44,18 +44,19 @@ void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
   _new_physics_system(N, E, __NULL_SENT(__VA_ARGS__))
 PhysicsSystem _new_physics_system(size_t, PhysicsEntity *, ...);
 
-#define BEGIN_PHYSICS(DT)                       \
-  static double __t0 = 0.0f;                    \
-  static double __acc = 0.0f;                   \
-  static const double __dt = 1.0f / 300.0f;     \
-  static const double DT = __dt;                \
-  double __t1 = glfwGetTime();                  \
-  double __delta_t = __t1 - __t0;               \
-  __t0 = __t1;                                  \
-  __acc += __delta_t;                           \
-  while (__acc >= __dt) {                       
-#define END_PHYSICS()                           \
-  __acc -= __dt;                                \
+#define BEGIN_PHYSICS(DT)                   \
+  static double __t0 = 0.0f;                \
+  static double __acc = 0.0f;               \
+  static const double __dt = 1.0f / 300.0f; \
+  static const double DT = __dt;            \
+  double __t1 = glfwGetTime();              \
+  double __delta_t = __t1 - __t0;           \
+  __t0 = __t1;                              \
+  __acc += __delta_t;                       \
+  while (__acc >= __dt) {                   
+#define END_PHYSICS()                       \
+    __acc -= __dt;                          \
   }
+
 
 #endif // PHYSICS_H_

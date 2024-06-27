@@ -28,4 +28,15 @@ void HW_INIT(void);
 void HW_REGISTER(res_id_t, void *);
 void HW_TEARDOWN(void);
 
+typedef struct {
+  size_t size;
+  size_t used;
+  void *mem;
+} MemoryArena;
+
+MemoryArena *arena_init(size_t);
+void *arena_alloc(MemoryArena *, size_t);
+void arena_reset(MemoryArena *);
+void arena_free(MemoryArena *);
+
 #endif // ALLOC_H_
