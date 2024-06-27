@@ -101,6 +101,23 @@ void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
     bhtree_integrate(flag, node->children[n], dt);
 }
 
+BHSystem _new_bh_system(BHNode *tree, ...) {
+  va_list args;
+  va_start(args, tree);
+    size_t forces_total = 0; 
+    force_fn force;
+    while ((force = va_arg(args, force_fn)) != NULL) forces_total++;
+  va_end(args);
+    
+  force_fn *forces = (force_fn *)malloc(forces_total * sizeof(force_fn));
+
+  va_start(args, tree); 
+    for (size_t i = 0; i < forces_total; i++) forces[i] = va_arg(args,force_fn);
+  va_end(args);
+
+  return (BHSystem) { tree, forces, forces_total };
+}
+
 void bhtree_print(BHNode *node) {
 #define PRINT_VEC2(v) printf("{\"x\": %.2f, \"y\": %.2f}", v.x, v.y);
   if (!node) return;

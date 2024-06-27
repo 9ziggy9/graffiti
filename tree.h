@@ -1,12 +1,10 @@
 #ifndef TREE_H_
 #define TREE_H_
-#include "physics.h"
-
 #include <stdbool.h>
+#include "physics.h"
 
 #define MAX_CHILDREN 4
 
-// TODO: make sure different methods are exclusive
 typedef enum {
   VERLET_POS = 1,
   VERLET_VEL = 2,
@@ -23,6 +21,12 @@ typedef struct BHNode {
   double m;           // total mass
 } BHNode;
 
+typedef struct {
+  BHNode *root;
+  force_fn *forces;
+  size_t forces_total;
+} BHSystem;
+
 static inline bool body_in_bounds(BHNode *n, PhysicsEntity *b) {
   return b->q.x >= n->min.x && b->q.x <= n->max.x
       && b->q.y >= n->min.y && b->q.y <= n->max.y;
@@ -33,6 +37,10 @@ static inline bool node_is_partitioned(BHNode *n) {
 }
 
 BHNode *bhtree_create(vec2, vec2);
+
+#define new_bh_system(T, ...) _new_bh_system(T, __NULL_SENT(__VA_ARGS__))
+BHSystem _new_bh_system(BHNode *, ...);
+
 void bhtree_insert(BHNode *, PhysicsEntity *);
 void bhtree_integrate(integration_flag, BHNode *, double);
 
@@ -50,6 +58,5 @@ BH_MAPPING bhtree_draw(BHNode *);
 BH_MAPPING bhtree_clear_forces(BHNode *);
 BH_MAPPING bhtree_apply_boundaries(BHNode *);
 BH_MAPPING bhtree_print(BHNode *);
-
 
 #endif // TREE_H_

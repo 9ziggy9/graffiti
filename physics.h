@@ -30,20 +30,16 @@ typedef struct PhysicsSystem {
   size_t forces_total;
 } PhysicsSystem;
 
-void forces_apply_pairwise(PhysicsSystem *);
+void forces_apply_internal(PhysicsSystem *);
 void force_pairwise_gravity(PhysicsEntity *, PhysicsEntity *);
+void force_pairwise_impulsive_collision(PhysicsEntity *, PhysicsEntity *);
 
 PhysicsEntity new_physics_entity(vec2, vec2, vec2, double, GLuint);
-PhysicsSystem new_physics_system(size_t, PhysicsEntity *, ...);
-
 void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
-void physics_entity_bind_forces(PhysicsEntity *, ...);
 
-void physics_apply_boundaries(PhysicsEntity *, int, boundary_t);
-void physics_apply_collision(PhysicsEntity *, int);
-void physics_apply_pairwise_gravity(PhysicsEntity *, int);
-
-double physics_compute_gravitational_potential_energy(PhysicsEntity *, int);
-double physics_compute_kinetic_energy(PhysicsEntity *, int);
+#define __NULL_SENT(...) __VA_ARGS__, NULL
+#define new_physics_system(N, E, ...) \
+  _new_physics_system(N, E, __NULL_SENT(__VA_ARGS__))
+PhysicsSystem _new_physics_system(size_t, PhysicsEntity *, ...);
 
 #endif // PHYSICS_H_

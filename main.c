@@ -25,14 +25,11 @@ void update_physics(PhysicsSystem *sys, BHNode *bh) {
   while (acc >= dt) {
 
     bhtree_integrate(VERLET_POS | VERLET_VEL, bh, dt);
-
     bhtree_clear_forces(bh);
 
-    forces_apply_pairwise(sys);
-    physics_apply_collision(sys->entities, sys->num_entities);
+    forces_apply_internal(sys);
 
     bhtree_apply_boundaries(bh);
-
     bhtree_integrate(VERLET_VEL, bh, dt);
 
     acc -= dt;
@@ -73,7 +70,7 @@ int main(void) {
 
   PhysicsSystem sys = new_physics_system(NUM_PARTS, particles,
                                          force_pairwise_gravity,
-                                         NULL);
+                                         force_pairwise_impulsive_collision);
 
   BHNode *bhtree_root = bhtree_create((vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
   for (int n = 0; n < NUM_PARTS; n++) bhtree_insert(bhtree_root, &particles[n]);
@@ -89,11 +86,6 @@ int main(void) {
 
       OPEN_SHADER(shd);
         bhtree_draw(bhtree_root);
-        /* for (int n = 0; n < NUM_PARTS; n++) { */
-        /*   draw_circle(particles[n].q, */
-        /*               (GLfloat) particles[n].geom.circ.R, */
-        /*               particles[n].color); */
-        /* } */
       CLOSE_SHADER();
 
       glfwSwapBuffers(win);
