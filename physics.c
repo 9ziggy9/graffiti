@@ -15,35 +15,16 @@ physics_entity_bind_geometry(PhysicsEntity *entity, geometry_t type, Geometry g)
   entity->geom   = g;
 }
 
-PhysicsSystem
-_new_physics_system(size_t num_entities, PhysicsEntity *entities, ...)
-{
-  va_list args;
-  va_start(args, entities);
-    size_t forces_total = 0; 
-    force_fn force;
-    while ((force = va_arg(args, force_fn)) != NULL) forces_total++;
-  va_end(args);
-    
-  force_fn *forces = (force_fn *)malloc(forces_total * sizeof(force_fn));
-
-  va_start(args, entities); 
-    for (size_t i = 0; i < forces_total; i++) forces[i] = va_arg(args,force_fn);
-  va_end(args);
-
-  return (PhysicsSystem) { entities, num_entities, forces, forces_total };
-}
-
-void forces_apply_internal(PhysicsSystem *ps) {
-  for (size_t i = 0; i < ps->num_entities; i++) {
-    for (size_t j = i + 1; j < ps->num_entities; j++) {
-      PhysicsEntity *pi = &ps->entities[i];
-      PhysicsEntity *pj = &ps->entities[j];   
-      for (size_t f = 0; f < ps->forces_total; f++) {
-        ps->forces[f](pi, pj); ps->forces[f](pj, pi);
-      }
-    }
-  } 
+#define SINGULARITY_PADDING 5
+void force_sink_gravity(PhysicsEntity *p, double Msink, vec2 Rsink) {
+  vec2 rvec   = vec2sub(p->q, Rsink);
+  double r2   = vec2dot(rvec, rvec);
+  if (r2 < SINGULARITY_PADDING) {
+    p->dq_dt = vec2scale(0.16, p->dq_dt);
+    return;
+  }
+  vec2 F      = vec2scale((-1) * Msink * (1.0f / r2), rvec);
+  p->d2q_dt2  = vec2add(p->d2q_dt2, F);
 }
 
 void force_pairwise_gravity(PhysicsEntity *pi, PhysicsEntity *pj) {
@@ -159,4 +140,37 @@ void physics_apply_boundaries(PhysicsEntity *ps, int num_ps, boundary_t bconds)
     }
   }
 }
+
+PhysicsSystem
+_new_physics_system(size_t num_entities, PhysicsEntity *entities, ...)
+{
+  va_list args;
+  va_start(args, entities);
+    size_t forces_total = 0; 
+    force_fn force;
+    while ((force = va_arg(args, force_fn)) != NULL) forces_total++;
+  va_end(args);
+    
+  force_fn *forces = (force_fn *)malloc(forces_total * sizeof(force_fn));
+
+  va_start(args, entities); 
+    for (size_t i = 0; i < forces_total; i++) forces[i] = va_arg(args,force_fn);
+  va_end(args);
+
+  return (PhysicsSystem) { entities, num_entities, forces, forces_total };
+}
+
+void forces_apply_internal(PhysicsSystem *ps) {
+  for (size_t i = 0; i < ps->num_entities; i++) {
+    for (size_t j = i + 1; j < ps->num_entities; j++) {
+      PhysicsEntity *pi = &ps->entities[i];
+      PhysicsEntity *pj = &ps->entities[j];   
+      for (size_t f = 0; f < ps->forces_total; f++) {
+        ps->forces[f](pi, pj); ps->forces[f](pj, pi);
+      }
+    }
+  } 
+}
+
 #endif
+

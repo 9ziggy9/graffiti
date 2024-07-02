@@ -162,3 +162,46 @@ void draw_circle_boundary(vec2 pos, GLfloat radius, GLuint color_hex) {
 
   BUFFER_DRAW(GL_LINE_LOOP, 0, num_segments);
 }
+
+void draw_rectangle_boundary(vec2 min, vec2 max, GLuint color_hex) {
+    struct vertex vertices[4];
+    float color[] = COLOR_NORM(color_hex);
+
+    vertices[0].pos[0] = (GLfloat)min.x;
+    vertices[0].pos[1] = (GLfloat)min.y;
+    vertices[0].pos[2] = (GLfloat)0.0;
+    vertices[1].pos[0] = (GLfloat)max.x;
+    vertices[1].pos[1] = (GLfloat)min.y;
+    vertices[1].pos[2] = (GLfloat)0.0;
+    vertices[2].pos[0] = (GLfloat)max.x;
+    vertices[2].pos[1] = (GLfloat)max.y;
+    vertices[2].pos[2] = (GLfloat)0.0;
+    vertices[3].pos[0] = (GLfloat)min.x;
+    vertices[3].pos[1] = (GLfloat)max.y;
+    vertices[3].pos[2] = (GLfloat)0.0;
+
+    for (int i = 0; i < 4; i++) {
+        vertices[i].color[0] = color[0];
+        vertices[i].color[1] = color[1];
+        vertices[i].color[2] = color[2];
+        vertices[i].color[3] = color[3];
+    }
+
+    BUFFER_CLEAR();
+    BUFFER_BIND();
+        BUFFER_DEFINE_VERTEX_ATTRIBUTES(ATTR_POS | ATTR_CLR);
+        glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(vertices),
+                     vertices, GL_STATIC_DRAW);
+    BUFFER_UNBIND();
+
+    mat4 model = ID_MAT4;
+    model[0][0] = 2.0f / WIN_W;
+    model[1][1] = 2.0f / WIN_H;
+    model[3][0] = -1.0f;
+    model[3][1] = -1.0f;
+
+    GLint model_uni_loc = glGetUniformLocation(SHADER(), "model");
+    glUniformMatrix4fv(model_uni_loc, 1, GL_FALSE, (GLfloat*) model);
+
+    BUFFER_DRAW(GL_LINE_LOOP, 0, 4);
+}

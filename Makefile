@@ -1,6 +1,6 @@
 CC=gcc
 LIBS=-lm
-CFLAGS=-Wall -Wextra -Wconversion
+CFLAGS=-Wall -Wextra -Wconversion -pedantic
 GLFLAGS=-lglfw -lGL -lGLEW
 EXE=./run
 TRASH=./run *.o *.so

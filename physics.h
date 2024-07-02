@@ -22,27 +22,14 @@ typedef struct PhysicsEntity {
 } PhysicsEntity;
 
 typedef void (*force_fn)(PhysicsEntity *, PhysicsEntity *);
+typedef void (*force_sink)(PhysicsEntity *, double, vec2);
 
-typedef struct PhysicsSystem {
-  PhysicsEntity *entities;
-  size_t num_entities;
-  force_fn *forces;
-  size_t forces_total;
-} PhysicsSystem;
-
-void forces_apply_internal(PhysicsSystem *);
-void forces_apply_external(PhysicsSystem *);
-
+void force_sink_gravity(PhysicsEntity *, double, vec2);
 void force_pairwise_gravity(PhysicsEntity *, PhysicsEntity *);
 void force_pairwise_impulsive_collision(PhysicsEntity *, PhysicsEntity *);
 
 PhysicsEntity new_physics_entity(vec2, vec2, vec2, double, GLuint);
 void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
-
-#define __NULL_SENT(...) __VA_ARGS__, NULL
-#define new_physics_system(N, E, ...) \
-  _new_physics_system(N, E, __NULL_SENT(__VA_ARGS__))
-PhysicsSystem _new_physics_system(size_t, PhysicsEntity *, ...);
 
 #define BEGIN_PHYSICS(DT)                   \
   static double __t0 = 0.0f;                \
@@ -60,3 +47,21 @@ PhysicsSystem _new_physics_system(size_t, PhysicsEntity *, ...);
 
 
 #endif // PHYSICS_H_
+
+#if 0 // deprecated
+typedef struct PhysicsSystem {
+  PhysicsEntity *entities;
+  size_t num_entities;
+  force_fn *forces;
+  size_t forces_total;
+} PhysicsSystem;
+
+void forces_apply_internal(PhysicsSystem *);
+void forces_apply_external(PhysicsSystem *);
+
+#define __NULL_SENT(...) __VA_ARGS__, NULL
+#define new_physics_system(N, E, ...) \
+  _new_physics_system(N, E, __NULL_SENT(__VA_ARGS__))
+PhysicsSystem _new_physics_system(size_t, PhysicsEntity *, ...);
+#endif
+

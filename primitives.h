@@ -16,5 +16,6 @@ void ENABLE_PRIMITIVES(void);
 void draw_eqtriangle(vec2, GLfloat, GLfloat, GLuint, GLuint, GLuint);
 void draw_circle(vec2 pos, GLfloat radius, GLuint color_hex);
 void draw_circle_boundary(vec2 pos, GLfloat radius, GLuint color_hex);
+void draw_rectangle_boundary(vec2 min, vec2 max, GLuint color_hex);
 
 #endif // PRIMITIVES_H_

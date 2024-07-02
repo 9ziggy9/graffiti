@@ -4,16 +4,16 @@
 
 #include <stdio.h>
 
-BH_TREE_MAP_1(bhtree_draw, {
+BH_NODE_MAP(bhtree_draw, {
   PhysicsEntity *body = node->bodies[n];
   draw_circle(body->q, (GLfloat) body->geom.circ.R, body->color);
 })
 
-BH_TREE_MAP_1(bhtree_clear_forces, {
+BH_NODE_MAP(bhtree_clear_forces, {
   node->bodies[n]->d2q_dt2 = ((vec2){0.0f, 0.0f});
 })
 
-BH_TREE_MAP_1(bhtree_apply_boundaries, {
+BH_NODE_MAP(bhtree_apply_boundaries, {
   PhysicsEntity *body = node->bodies[n];
   if (body->q.x - body->geom.circ.R <= 0.0) {
     body->dq_dt.x *= -1;
@@ -31,21 +31,35 @@ BH_TREE_MAP_1(bhtree_apply_boundaries, {
   }
 })
 
-static void node_partition(MemoryArena *arena, BHNode *n) {
-  vec2 delta_r = vec2sub(n->max, n->min);
-  vec2 delta_x = vec2scale(0.5, vec2proj(delta_r, X_HAT));
-  vec2 delta_y = vec2scale(0.5, vec2proj(delta_r, Y_HAT));
-  vec2 delta_q = vec2add(delta_x, delta_y);
-  for (size_t i = 0; i < 2; i++) {
-    for (size_t j = 0; j < 2; j++) {
-      vec2 dmin = vec2add(vec2scale((double)i, delta_x),
-                          vec2scale((double)j, delta_y));
-      vec2 new_min = vec2add(n->min, dmin);
-      vec2 new_max = vec2add(new_min, delta_q);
-      n->children[i + 2 * j] = bhtree_create(arena, new_min, new_max);
-    }
+static void node_partition(MemoryArena *arena, BHNode *node) {
+  EACH_QUAD(node->min, node->max, {
+      node->children[i + 2 * j] = bhtree_create(arena, __qmin, __qmax);
+  });
+  node->is_partitioned = true;
+}
+
+static void draw_quad(BHNode *node, vec2 pos) {
+  EACH_QUAD(node->min, node->max, {
+    if (body_in_bounds(__qmin, __qmax, pos))
+      draw_rectangle_boundary(__qmin, __qmax, 0xFF0000FF);
+  });
+}
+
+static OccState map_to_quadrant(BHNode *node, vec2 pos) {
+  EACH_QUAD(node->min, node->max, {
+    if (body_in_bounds(__qmin, __qmax, pos)) return pow(2, i + 2 * j);
+  });
+  return OCC_0;
+}
+
+void bhtree_draw_quads(BHNode *node, GLuint color) {
+  if (!node) return;
+  for (size_t b = 0; b < node->body_total; b++)
+    draw_quad(node, node->bodies[b]->q);
+  for (size_t n = 0; n < MAX_CHILDREN; n++) {
+    BHNode *child = node->children[n];
+    if (child) bhtree_draw_quads(child, color);
   }
-  n->is_partitioned = true;
 }
 
 static vec2 compute_cm(PhysicsEntity *bodies[], size_t body_total) {
@@ -62,6 +76,7 @@ BHNode *bhtree_create(MemoryArena *arena, vec2 min, vec2 max) {
   BHNode *node = (BHNode *) arena_alloc(arena, sizeof(BHNode));
   node->min = min; node->max = max;
   node->body_total = 0; node->is_partitioned = false;
+  node->occ_state = OCC_0;
   node->cm = (vec2){0.0, 0.0}; node->m = 0.0;
   for (int n = 0; n < MAX_CHILDREN; n++) {
     node->children[n] = NULL;
@@ -71,16 +86,22 @@ BHNode *bhtree_create(MemoryArena *arena, vec2 min, vec2 max) {
 }
 
 void bhtree_insert(MemoryArena *arena, BHNode *node, PhysicsEntity *body) {
-  if (!body_in_bounds(node, body)) return;
-  if (node->body_total < MAX_CHILDREN) {
+  if (!body_in_bounds(node->min, node->max, body->q)) return;
+  if (node->body_total < NUM_QUADS) {
+    printf("BODY MAPPING TO QUAD: %zu\n",
+           (size_t)map_to_quadrant(node, body->q));
     node->bodies[node->body_total++] = body;
     node->m += body->m;
     node->cm = compute_cm(node->bodies, node->body_total);
-  } else {
-    if (!node_is_partitioned(node)) node_partition(arena, node);
+    return;
+  }
+  if (node_is_partitioned(node)) {
     for (size_t n = 0; n < MAX_CHILDREN; n++)
       bhtree_insert(arena, node->children[n], body);
+    return;
   }
+  node_partition(arena, node); 
+  return;
 }
 
 BHNode *
@@ -108,7 +129,30 @@ void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
     bhtree_integrate(flag, node->children[n], dt);
 }
 
-BHSystem _new_bh_system(MemoryArena *arena, BHNode *tree, ...) {
+void bhtree_apply_sink_force(BHNode *node, force_sink F) {
+  if (!node) return;
+  for (size_t n = 0; n < node->body_total; n++) {
+    F(node->bodies[n], 10000, (vec2){(double)WIN_W / 2, (double)WIN_H / 2});
+  }
+  for (size_t n = 0; n < MAX_CHILDREN; n++) {
+    bhtree_apply_sink_force(node->children[n], F);
+  }
+}
+
+void bhtree_apply_pairconst_force(BHNode *node, force_fn F) {
+  if (!node) return;
+  for (size_t i = 0; i < node->body_total; i++) {
+    for (size_t j = i + 1; j < node->body_total; j++) {
+      F(node->bodies[i], node->bodies[j]);
+      F(node->bodies[j], node->bodies[i]);
+    }
+  }
+  for (size_t c = 0; c < MAX_CHILDREN; c++)
+    bhtree_apply_pairconst_force(node->children[c], F);
+}
+
+#if 0 // deprecated
+BHSystem new_bh_system(BHNode *tree) {
   va_list args;
   va_start(args, tree);
     size_t forces_total = 0; 
@@ -125,34 +169,4 @@ BHSystem _new_bh_system(MemoryArena *arena, BHNode *tree, ...) {
 
   return (BHSystem) { tree, forces, forces_total };
 }
-
-void bhtree_apply_internal_forces(BHSystem *sys);
-
-void bhtree_print(BHNode *node) {
-#define PRINT_VEC2(v) printf("{\"x\": %.2f, \"y\": %.2f}", v.x, v.y);
-  if (!node) return;
-  printf("{\n\"min\": "); PRINT_VEC2(node->min);
-  printf(",\n\"max\": "); PRINT_VEC2(node->max);
-
-  printf(",\ncm: "); PRINT_VEC2(node->cm);
-  printf("\n\"bodies\": [");
-  for (size_t i = 0; i < node->body_total; i++) {
-    if (i > 0) printf(", ");
-    PRINT_VEC2(node->bodies[i]->q);
-  }
-  printf("],\n\"children\": [");
-  for (size_t i = 0; i < MAX_CHILDREN; i++) {
-    if (node->children[i]) {
-      if (i > 0) printf(", ");
-      bhtree_print(node->children[i]);
-    } else {
-      if (i > 0) printf(", ");
-      printf("null");
-    }
-  }
-  printf("]\n}");
-  if (node->children[MAX_CHILDREN - 1]) {
-    printf(",\n");
-  }
-#undef PRINT_VEC2
-}
+#endif
