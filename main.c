@@ -21,9 +21,9 @@ PhysicsEntity *gen_n_particle_system(size_t N) {
   for (size_t n = 0; n < N; n++) {
     particles[n] = new_physics_entity(
       (vec2){(double)get_random(0, WIN_W), (double)get_random(0, WIN_H)},
-      (vec2){(double)get_random(0, 0), (double)get_random(0, 0)},
+      (vec2){(double)get_random(-400, 400), (double)get_random(-400, 400)},
       (vec2){0.0f, 0.0f},
-      (double)get_random(100, 150),
+      (double)get_random(100, 100),
       get_random_color_from_palette()
     );
     physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
@@ -40,6 +40,8 @@ int main(void) {
   GLFWwindow *win = window_create(WIN_W, WIN_H, WIN_T1);
   window_attach_handler(win, handle_key);
 
+  glfwMakeContextCurrent(win);
+
   GLuint shd = compile_simple_shader("./glsl/base.vs", "./glsl/base.fs");
   HW_REGISTER(ID_GL_SHADER_IDX, (void *) &shd);
 
@@ -49,14 +51,14 @@ int main(void) {
   SEED_RANDOM(9001);
 
   // 1 MB per frame
-  #define FRAME_MEMORY_SIZE 1024 * 1024
+  #define FRAME_MEMORY_SIZE 1024 * 1024 * 512
   MemoryArena *FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE);
 
-  #define NUM_PS 4
+  #define NUM_PS 200
   PhysicsEntity *particles = gen_n_particle_system(NUM_PS);
-  BHNode *ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
 
   while (!glfwWindowShouldClose(win)) {
+    BHNode *ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
     BEGIN_PHYSICS(dt);
       bhtree_integrate(VERLET_POS | VERLET_VEL, ptree, dt);
       bhtree_apply_boundaries(ptree);
@@ -64,17 +66,17 @@ int main(void) {
     END_PHYSICS();
     BEGIN_FRAME();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-      glfwMakeContextCurrent(win);
       OPEN_SHADER(shd);
         bhtree_draw(ptree);
-        bhtree_draw_quads(ptree, CLR_GREEN);
       CLOSE_SHADER();
       glfwSwapBuffers(win);
       glfwPollEvents();
     END_FRAME();
+    arena_reset(FRAME_ARENA);
   }
 
   arena_free(FRAME_ARENA);
+  arena_reset(FRAME_ARENA);
   HW_TEARDOWN();
   glfwTerminate();
   SUCCESS_LOG("program can exit successfully, good bye");

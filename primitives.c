@@ -33,8 +33,6 @@ static void BUFFER_DEFINE_VERTEX_ATTRIBUTES(attr_flag attrs) {
 }
 
 static void BUFFER_BIND(void) {
-  glGenVertexArrays(1, &VAO);
-  glGenBuffers(1, &VBO);
   glBindVertexArray(VAO);
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
 }
@@ -52,6 +50,8 @@ static void BUFFER_DRAW(GLenum prim, GLint fst, GLsizei lst) {
 
 void ENABLE_PRIMITIVES(void) {
   if (PRIMITIVES_ENABLED) PANIC_WITH(PRIMITIVES_ALREADY_ENABLED);
+  glGenVertexArrays(1, &VAO);
+  glGenBuffers(1, &VBO);
   HW_REGISTER(ID_GL_VAO_PTR, &VAO);
   HW_REGISTER(ID_GL_VBO_PTR, &VBO);
   PRIMITIVES_ENABLED = true;
@@ -98,7 +98,6 @@ void draw_circle(vec2 pos, GLfloat radius, GLuint color_hex) {
   const int num_segments = 100;
   const float color[] = COLOR_NORM(color_hex);
 
-  BUFFER_CLEAR();
   struct vertex vertices[num_segments + 2];
   for (int i = 0; i <= num_segments; i++) {
     double theta = 2.0f * M_PI * i / num_segments;
@@ -114,7 +113,7 @@ void draw_circle(vec2 pos, GLfloat radius, GLuint color_hex) {
   BUFFER_BIND();
     BUFFER_DEFINE_VERTEX_ATTRIBUTES(ATTR_POS | ATTR_CLR);
     glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(vertices),
-                vertices, GL_STATIC_DRAW);
+                 vertices, GL_STATIC_DRAW);
   BUFFER_UNBIND();
 
   mat4 model = ID_MAT4;

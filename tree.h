@@ -4,6 +4,7 @@
 #include "alloc.h"
 
 #include <stdbool.h>
+#include <math.h>
 
 #define MAX_CHILDREN 4
 #define NUM_QUADS 4
@@ -16,17 +17,21 @@ typedef enum {
 
 typedef enum {
   OCC_0  = 0, // 0b0000
-  OCC_NW = 1, // 0b0001
+  OCC_SW = 1, // 0b0001
   OCC_NE = 2, // 0b0010
-  OCC_SW = 4, // 0b0100
+  OCC_NW = 4, // 0b0100
   OCC_SE = 8, // 0b1000
 } OccState;
 
-static inline size_t occ_count(OccState state) {
-  return ((state & OCC_SE) >> 3)
-       + ((state & OCC_SW) >> 2)
-       + ((state & OCC_NE) >> 1)
-       + ((state & OCC_NW) >> 0);
+typedef enum {
+  QUAD_SW = 0,
+  QUAD_NE,
+  QUAD_NW,
+  QUAD_SE,
+} Quad;
+
+static inline OccState quad_to_occ(Quad q) {
+  return (OccState)floor(pow(2, (double) q));
 }
 
 typedef struct BHNode {
@@ -45,10 +50,6 @@ static inline bool body_in_bounds(vec2 min, vec2 max, vec2 pos) {
       && pos.y >= min.y && pos.y < max.y;
 }
 
-static inline bool node_is_partitioned(BHNode *n) {
-  return n->children[0] != NULL;
-}
-
 BHNode *bhtree_create(MemoryArena *, vec2, vec2);
 BHNode *bhtree_build_in_arena(MemoryArena *, PhysicsEntity *, size_t);
 
@@ -56,10 +57,13 @@ typedef void BH_NODE_MAPPING;
 #define BH_NODE_MAP(FN, CODE)                          \
   BH_NODE_MAPPING FN(BHNode *node) {                   \
     if (!node) return;                                 \
-    for (size_t n = 0; n < node->body_total; n++) CODE \
-    for (size_t n = 0; n < MAX_CHILDREN; n++)          \
-      FN(node->children[n]);                           \
-  }                                                    
+    for (size_t n = 0; n < NUM_QUADS; n++) CODE        \
+    if (node->is_partitioned) {                        \
+      for (size_t n = 0; n < MAX_CHILDREN; n++)        \
+        FN(node->children[n]);                         \
+    }                                                  \
+}                                                    
+
 BH_NODE_MAPPING bhtree_draw(BHNode *);
 BH_NODE_MAPPING bhtree_draw_quads(BHNode *, GLuint);
 BH_NODE_MAPPING bhtree_clear_forces(BHNode *);
@@ -82,6 +86,8 @@ BH_NODE_MAPPING bhtree_apply_boundaries(BHNode *);
   }                                                         \
   } while(0);                                               \
 }
+
+void quad_state_log(OccState);
 
 void bhtree_apply_sink_force(BHNode *, force_sink);
 void bhtree_apply_pairconst_force(BHNode *, force_fn);

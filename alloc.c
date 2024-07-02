@@ -92,6 +92,15 @@ void HW_TEARDOWN(void) {
   SUCCESS_LOG("heap watch list teardown completed without error");
 }
 
+#define PAGE_SIZE 4096
+#define TOUCH_PAGES(ARENA)                          \
+  do {                                              \
+    for (size_t i = 0; i < bytes; i += PAGE_SIZE) { \
+      ((char *)ARENA->mem)[i] = 0;                  \
+    }                                               \
+  } while(0)
+
+
 MemoryArena *arena_init(size_t bytes) {
   MemoryArena *arena = malloc(sizeof(MemoryArena));
   if (!arena) PANIC_WITH(ARENA_INIT_STRUCT_MALLOC_FAIL);
@@ -99,6 +108,9 @@ MemoryArena *arena_init(size_t bytes) {
   arena->used = 0;
   arena->mem  = malloc(bytes);
   if (arena->mem == NULL) PANIC_WITH(ARENA_INIT_MEM_MALLOC_FAIL);
+
+  TOUCH_PAGES(arena); // force virtual memory to be physically allocated
+
   return arena;
 }
 

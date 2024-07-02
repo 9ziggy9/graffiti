@@ -20,3 +20,7 @@ $(OBJS): %.o: %.c
 
 clean:
 	rm -rf $(TRASH)
+
+valgrind: $(EXE)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
+	--log-file=valgrind-report.txt ./$(EXE)
