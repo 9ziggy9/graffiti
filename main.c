@@ -16,7 +16,7 @@ void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
 
 
-#define SPD 10
+#define SPD 0
 PhysicsEntity *gen_n_particle_system(size_t N) {
   INFO_LOG("ALLOCATING HEAP SIZE FOR PARTICLES:");
   printf("%zu Kb \n", (N * sizeof(PhysicsEntity)) / 1024);
@@ -26,7 +26,7 @@ PhysicsEntity *gen_n_particle_system(size_t N) {
       (vec2){(double)get_random(0, WIN_W), (double)get_random(0, WIN_H)},
       (vec2){(double)get_random(-SPD, SPD), (double)get_random(-SPD, SPD)},
       (vec2){0.0f, 0.0f},
-      (double)get_random(40, 40),
+      (double)get_random(600, 600),
       get_random_color_from_palette()
     );
     physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
@@ -59,16 +59,24 @@ int main(void) {
 
   /*NOTE: greater allocator will REQUIRE that gen_n_particle_system also
    be tied to the arena or generalized to mmap methods. */
-  #define NUM_PS 1850
+  #define NUM_PS 30
   PhysicsEntity *particles = gen_n_particle_system(NUM_PS);
 
   while (!glfwWindowShouldClose(win)) {
-    // TODO (idea): memoryarean tagging
+    // TODO (idea): memory arena tagging
     BHNode *ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
     BEGIN_PHYSICS(dt);
-      bhtree_integrate(VERLET_POS | VERLET_VEL, ptree, dt);
+      bhtree_clear_forces(ptree);
+      bhtree_integrate(VERLET_POS, ptree, dt);
       bhtree_apply_boundaries(ptree);
-      bhtree_apply_sink(ptree, WIN_CENTER);
+      for (size_t p = 0; p < NUM_PS; p++) {
+        PhysicsEntity *body = &particles[p];
+        bhtree_apply_pairwise_collisions(body, ptree);
+      }
+      for (size_t p = 0; p < NUM_PS; p++) {
+        PhysicsEntity *body = &particles[p];
+        bhtree_apply_pairwise_gravity(body, ptree);
+      }
       bhtree_integrate(VERLET_VEL, ptree, dt);
     END_PHYSICS();
     BEGIN_FRAME();

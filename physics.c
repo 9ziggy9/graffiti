@@ -15,8 +15,8 @@ physics_entity_bind_geometry(PhysicsEntity *entity, geometry_t type, Geometry g)
   entity->geom   = g;
 }
 
-#define SINGULARITY_PADDING 250
-void force_sink_gravity(PhysicsEntity *p, vec2 Rsink) {
+#define SINGULARITY_PADDING 100
+void force_singular_gravity(PhysicsEntity *p, vec2 Rsink) {
   static double effectiveM = 10;
   vec2 rvec   = vec2sub(p->q, Rsink);
   vec2 rhat   = vec2scale(1 / vec2mag(rvec), rvec);
@@ -119,6 +119,7 @@ void physics_apply_collision(PhysicsEntity *ps, int num_ps) {
     }
   }
 }
+
 // TODO: unhardcode circular geometry
 void physics_apply_boundaries(PhysicsEntity *ps, int num_ps, boundary_t bconds)
 {

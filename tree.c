@@ -155,16 +155,59 @@ void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
     bhtree_integrate(flag, node->children[n], dt);
 }
 
-void bhtree_apply_sink(BHNode *node, vec2 sink_source) {
+void bhtree_apply_singular_gravity(BHNode *node, vec2 sink_source) {
   (void) sink_source;
   if (!node) return;
   for (size_t n = 0; n < NUM_QUADS; n++) {
     PhysicsEntity *body = node->bodies[n];
-    if (body) force_sink_gravity(body, sink_source);
+    if (body) force_singular_gravity(body, sink_source);
   }
   if (node->is_partitioned) {
     for (size_t n = 0; n < MAX_CHILDREN; n++)
-      bhtree_apply_sink(node->children[n], sink_source);
+      bhtree_apply_singular_gravity(node->children[n], sink_source);
+  }
+}
+
+static vec2 da_gravity(PhysicsEntity *p_i, PhysicsEntity *p_j) {
+  vec2 r    = vec2sub(p_j->q, p_i->q);
+  vec2 rhat = vec2scale(1 / vec2mag(r), r);
+  double r2 = vec2dot(r, r);
+  if (r2 <= 0) return (vec2){0,0};
+  return vec2scale(5000 * p_j->m * (1 / r2), rhat);
+}
+
+static void quadrant_gravity(PhysicsEntity *body, BHNode *node) {
+  for (size_t n = 0; n < NUM_QUADS; n++) {
+    PhysicsEntity *cobody = node->bodies[n];
+    if (body == cobody) continue;
+    if (cobody) {
+      vec2 da = da_gravity(body, cobody);
+      body->d2q_dt2 = vec2add(body->d2q_dt2, da);
+    }
+  }
+}
+
+void bhtree_apply_pairwise_gravity(PhysicsEntity *body, BHNode *node) {
+  if (!node) return;
+  if (!node->is_partitioned) quadrant_gravity(body, node);
+  for (size_t n = 0; n < MAX_CHILDREN; n++) {
+    bhtree_apply_pairwise_gravity(body, node->children[n]);
+  }
+}
+
+void bhtree_apply_pairwise_collisions(PhysicsEntity *body, BHNode *node) {
+  if (!node) return;
+  if (!node->is_partitioned) {
+    for (size_t n = 0; n < MAX_CHILDREN; n++) {
+      PhysicsEntity *cobody = node->bodies[n];
+      if (body == cobody) continue;
+      if (cobody) {
+        force_pairwise_impulsive_collision(body, cobody);
+      }
+    }
+  }
+  for (size_t n = 0; n < MAX_CHILDREN; n++) {
+    bhtree_apply_pairwise_collisions(body, node->children[n]);
   }
 }
 
