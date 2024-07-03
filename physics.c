@@ -15,15 +15,19 @@ physics_entity_bind_geometry(PhysicsEntity *entity, geometry_t type, Geometry g)
   entity->geom   = g;
 }
 
-#define SINGULARITY_PADDING 5
-void force_sink_gravity(PhysicsEntity *p, double Msink, vec2 Rsink) {
+#define SINGULARITY_PADDING 250
+void force_sink_gravity(PhysicsEntity *p, vec2 Rsink) {
+  static double effectiveM = 10;
   vec2 rvec   = vec2sub(p->q, Rsink);
+  vec2 rhat   = vec2scale(1 / vec2mag(rvec), rvec);
   double r2   = vec2dot(rvec, rvec);
   if (r2 < SINGULARITY_PADDING) {
-    p->dq_dt = vec2scale(0.16, p->dq_dt);
+    p->dq_dt = (vec2){0,0};
+    p->d2q_dt2 = (vec2){0,0};
+    effectiveM += p->m;
     return;
   }
-  vec2 F      = vec2scale((-1) * Msink * (1.0f / r2), rvec);
+  vec2 F      = vec2scale((-1) * effectiveM * (1.0f / r2), rhat);
   p->d2q_dt2  = vec2add(p->d2q_dt2, F);
 }
 

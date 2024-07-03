@@ -101,16 +101,16 @@ void HW_TEARDOWN(void) {
   } while(0)
 
 
-MemoryArena *arena_init(size_t bytes) {
-  MemoryArena *arena = malloc(sizeof(MemoryArena));
-  if (!arena) PANIC_WITH(ARENA_INIT_STRUCT_MALLOC_FAIL);
+MemoryArena *arena_init(size_t bytes, bool page_strat) {
+  MemoryArena *arena = mmap(NULL, sizeof(MemoryArena), PROT_READ | PROT_WRITE,
+                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (arena == MAP_FAILED) PANIC_WITH(ARENA_INIT_MMAP_ARENA_FAIL);
   arena->size = bytes;
   arena->used = 0;
-  arena->mem  = malloc(bytes);
-  if (arena->mem == NULL) PANIC_WITH(ARENA_INIT_MEM_MALLOC_FAIL);
-
-  TOUCH_PAGES(arena); // force virtual memory to be physically allocated
-
+  arena->mem = mmap(NULL, bytes, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (arena->mem == NULL) PANIC_WITH(ARENA_INIT_MMAP_MEM_FAIL);
+  if (page_strat) TOUCH_PAGES(arena); // force physical pages
   return arena;
 }
 
@@ -124,10 +124,24 @@ void *arena_alloc(MemoryArena *arena, size_t size) {
 void arena_reset(MemoryArena *arena) { arena->used = 0; }
 
 void arena_free(MemoryArena *arena) {
-    free(arena->mem);
+    if (arena->mem != NULL) munmap(arena->mem, arena->size);
     arena->mem = NULL;
     arena->size = 0;
     arena->used = 0;
-    free(arena);
+    if (arena != NULL) munmap(arena, sizeof(MemoryArena));
     arena = NULL;
 }
+
+#if 0 // deprecated
+MemoryArena *arena_init(size_t bytes, bool page_strat) {
+  MemoryArena *arena = malloc(sizeof(MemoryArena));
+  if (!arena) PANIC_WITH(ARENA_INIT_STRUCT_MALLOC_FAIL);
+  arena->size = bytes;
+  arena->used = 0;
+  arena->mem  = malloc(bytes);
+  if (arena->mem == NULL) PANIC_WITH(ARENA_INIT_MEM_MALLOC_FAIL);
+  if (page_strat) TOUCH_PAGES(arena); // force physical pages
+
+  return arena;
+}
+#endif

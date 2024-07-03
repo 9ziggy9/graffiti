@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <stdbool.h>
+#include <sys/mman.h>
+
+#define PAGE_VIRTUALLY  false
+#define PAGE_PHYSICALLY true
 
 typedef enum {
   ID_STD_PTR,
@@ -34,7 +39,7 @@ typedef struct {
   void *mem;
 } MemoryArena;
 
-MemoryArena *arena_init(size_t);
+MemoryArena *arena_init(size_t, bool);
 void *arena_alloc(MemoryArena *, size_t);
 void arena_reset(MemoryArena *);
 void arena_free(MemoryArena *);

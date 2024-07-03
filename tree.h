@@ -89,10 +89,10 @@ BH_NODE_MAPPING bhtree_apply_boundaries(BHNode *);
 
 void quad_state_log(OccState);
 
-void bhtree_apply_sink_force(BHNode *, force_sink);
-void bhtree_apply_pairconst_force(BHNode *, force_fn);
 void bhtree_insert(MemoryArena *, BHNode *, PhysicsEntity *);
 void bhtree_integrate(integration_flag, BHNode *, double);
+
+void bhtree_apply_sink(BHNode *, vec2);
 
 #endif // TREE_H_
 

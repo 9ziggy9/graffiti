@@ -155,27 +155,17 @@ void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
     bhtree_integrate(flag, node->children[n], dt);
 }
 
-void bhtree_apply_sink_force(BHNode *node, force_sink F) {
+void bhtree_apply_sink(BHNode *node, vec2 sink_source) {
+  (void) sink_source;
   if (!node) return;
   for (size_t n = 0; n < NUM_QUADS; n++) {
     PhysicsEntity *body = node->bodies[n];
-    if (body) F(body, 10000, (vec2){(double)WIN_W / 2, (double)WIN_H / 2});
+    if (body) force_sink_gravity(body, sink_source);
   }
-  for (size_t n = 0; n < MAX_CHILDREN; n++) {
-    bhtree_apply_sink_force(node->children[n], F);
+  if (node->is_partitioned) {
+    for (size_t n = 0; n < MAX_CHILDREN; n++)
+      bhtree_apply_sink(node->children[n], sink_source);
   }
-}
-
-void bhtree_apply_pairconst_force(BHNode *node, force_fn F) {
-  if (!node) return;
-  for (size_t i = 0; i < NUM_QUADS; i++) {
-    for (size_t j = i + 1; j < node->body_total; j++) {
-      F(node->bodies[i], node->bodies[j]);
-      F(node->bodies[j], node->bodies[i]);
-    }
-  }
-  for (size_t c = 0; c < MAX_CHILDREN; c++)
-    bhtree_apply_pairconst_force(node->children[c], F);
 }
 
 #if 0 // deprecated

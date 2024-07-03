@@ -24,7 +24,7 @@ typedef struct PhysicsEntity {
 typedef void (*force_fn)(PhysicsEntity *, PhysicsEntity *);
 typedef void (*force_sink)(PhysicsEntity *, double, vec2);
 
-void force_sink_gravity(PhysicsEntity *, double, vec2);
+void force_sink_gravity(PhysicsEntity *, vec2);
 void force_pairwise_gravity(PhysicsEntity *, PhysicsEntity *);
 void force_pairwise_impulsive_collision(PhysicsEntity *, PhysicsEntity *);
 
