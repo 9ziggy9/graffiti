@@ -34,13 +34,6 @@ BH_NODE_MAP(bhtree_apply_boundaries, {
   }
 })
 
-static void node_partition(MemoryArena *arena, BHNode *node) {
-  EACH_QUAD(node->min, node->max, {
-      node->children[i + 2 * j] = bhtree_create(arena, __qmin, __qmax);
-  });
-  node->is_partitioned = true;
-}
-
 static void draw_quad(BHNode *node) {
   EACH_QUAD(node->min, node->max, {
     draw_rectangle_boundary(__qmin, __qmax, 0xFF0000FF);
@@ -73,19 +66,6 @@ void bhtree_draw_quads(BHNode *node, GLuint color) {
   }
 }
 
-static vec2 compute_cm(PhysicsEntity *bodies[], size_t body_total) {
-  double M = 0;
-  vec2 cm = (vec2){0.0, 0.0};
-  for (size_t n = 0; n < body_total; n++) {
-    PhysicsEntity *body = bodies[n];
-    if (body) {
-      cm = vec2add(cm, vec2scale(body->m, body->q));
-      M += body->m;
-    }
-  }
-  return vec2scale((1 / M), cm);
-}
-
 BHNode *bhtree_create(MemoryArena *arena, vec2 min, vec2 max) {
   BHNode *node = (BHNode *) arena_alloc(arena, sizeof(BHNode));
   node->min = min; node->max = max;
@@ -97,34 +77,36 @@ BHNode *bhtree_create(MemoryArena *arena, vec2 min, vec2 max) {
   return node;
 }
 
+static void node_partition(MemoryArena *arena, BHNode *node) {
+  EACH_QUAD(node->min, node->max, {
+      node->children[i + 2 * j] = bhtree_create(arena, __qmin, __qmax);
+  });
+  node->is_partitioned = true;
+}
+
 void bhtree_insert(MemoryArena *arena, BHNode *node, PhysicsEntity *body) {
   if (!body_in_bounds(node->min, node->max, body->q)) return;
+  node->m += body->m;
+  node->body_total++;
+  node->cm =
+    vec2scale(1 / (node->m), vec2add(vec2scale(node->m - body->m, node->cm),
+                                     vec2scale(body->m, body->q)));
   PhysicsEntity *cobody = NULL;
+
   const Quad quad_target = quad_map(node, body->q);
-  if (node->body_total < NUM_QUADS) {
-    OccState occ_collision = node->occ_state & quad_to_occ(quad_target);
-    if (occ_collision) {
-      cobody = node->bodies[quad_target];
-      node->bodies[quad_target] = NULL;
-      node->occ_state &= ~quad_to_occ(quad_target);
-      node->m -= cobody->m;
-      node->body_total--;
-      node->cm = compute_cm(node->bodies, node->body_total);
-      goto _l_bhtree_part;
+  if (node->occ_state & quad_to_occ(quad_target)) {
+    cobody = node->bodies[quad_target];
+    node->bodies[quad_target] = NULL;
+    node->occ_state &= ~quad_to_occ(quad_target);
+    if (!(node->is_partitioned)) node_partition(arena, node); 
+    for (size_t n = 0; n < MAX_CHILDREN; n++) {
+      bhtree_insert(arena, node->children[n], body);
+      if (cobody) bhtree_insert(arena, node->children[n], cobody);
     }
-    node->bodies[quad_target] = body;
-    node->occ_state |= quad_to_occ(quad_target);
-    node->m += body->m;
-    node->body_total++;
-    node->cm = compute_cm(node->bodies, node->body_total);
     return;
   }
-_l_bhtree_part:
-  if (!(node->is_partitioned)) node_partition(arena, node); 
-  for (size_t n = 0; n < MAX_CHILDREN; n++) {
-    if (cobody) bhtree_insert(arena, node->children[n], cobody);
-    bhtree_insert(arena, node->children[n], body);
-  }
+  node->bodies[quad_target] = body;
+  node->occ_state |= quad_to_occ(quad_target);
   return;
 }
 
@@ -219,6 +201,7 @@ void bhtree_apply_collisions(BHNode *root, PhysicsEntity *body, GLuint color) {
     if (!body) continue;
     body->color = color;
   }
+  bhtree_apply_collisions(root->children[3], body, color);
 }
 
 #if 0 // deprecated

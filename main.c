@@ -26,7 +26,7 @@ PhysicsEntity *gen_n_particle_system(size_t N) {
       (vec2){(double)get_random(0, WIN_W), (double)get_random(0, WIN_H)},
       (vec2){(double)get_random(-SPD, SPD), (double)get_random(-SPD, SPD)},
       (vec2){0.0f, 0.0f},
-      (double)get_random(800, 800),
+      (double)get_random(250, 250),
       get_random_color_from_palette()
     );
     physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
@@ -51,7 +51,7 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(300);
 
-  SEED_RANDOM(11);
+  SEED_RANDOM(9001);
 
   // 1 MB per frame
   #define FRAME_MEMORY_SIZE 1024 * 512
@@ -59,10 +59,19 @@ int main(void) {
 
   /*NOTE: greater allocator will REQUIRE that gen_n_particle_system also
    be tied to the arena or generalized to mmap methods. */
-  #define NUM_PS 4
+  #define NUM_PS 30
   PhysicsEntity *particles = gen_n_particle_system(NUM_PS);
   BHNode *ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
   bhtree_apply_collisions(ptree, NULL, 0xFF0000FF);
+
+  printf("BODY TOTAL at ptree: %zu\n", ptree->body_total);
+
+  printf("ARENA USED: %zu\n"
+         "SIZE OF PARTS: %zu\n"
+         "SIZE OF BH NODE: %zu\n",
+         FRAME_ARENA->used,
+         NUM_PS * sizeof(PhysicsEntity),
+         sizeof(BHNode));
 
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
@@ -84,6 +93,7 @@ int main(void) {
           PhysicsEntity *p = &particles[n];
           draw_circle(p->q, (GLfloat)p->geom.circ.R, p->color);
         }
+        draw_circle(ptree->cm, 8.0, 0xFFFFFFFF);
       CLOSE_SHADER();
 
       glfwSwapBuffers(win);

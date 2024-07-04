@@ -96,7 +96,7 @@ void HW_TEARDOWN(void) {
 #define TOUCH_PAGES(ARENA)                          \
   do {                                              \
     for (size_t i = 0; i < bytes; i += PAGE_SIZE) { \
-      ((char *)ARENA->mem)[i] = 0;                  \
+      ((char *)ARENA->mem_start)[i] = 0;            \
     }                                               \
   } while(0)
 
@@ -107,25 +107,26 @@ MemoryArena *arena_init(size_t bytes, bool page_strat) {
   if (arena == MAP_FAILED) PANIC_WITH(ARENA_INIT_MMAP_ARENA_FAIL);
   arena->size = bytes;
   arena->used = 0;
-  arena->mem = mmap(NULL, bytes, PROT_READ | PROT_WRITE,
+  arena->mem_start = mmap(NULL, bytes, PROT_READ | PROT_WRITE,
                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (arena->mem == NULL) PANIC_WITH(ARENA_INIT_MMAP_MEM_FAIL);
+  if (arena->mem_start == NULL) PANIC_WITH(ARENA_INIT_MMAP_MEM_FAIL);
+  arena->mem_offset = arena->mem_start;
   if (page_strat) TOUCH_PAGES(arena); // force physical pages
   return arena;
 }
 
 void *arena_alloc(MemoryArena *arena, size_t size) {
     if (arena->used + size > arena->size) PANIC_WITH(ARENA_ALLOC_SIZE_OVERFLOW);
-    void *ptr = (char*)arena->mem + arena->used;
     arena->used += size;
-    return ptr;
+    arena->mem_offset = (uint8_t *)arena->mem_offset + arena->used;
+    return arena->mem_offset;
 }
 
 void arena_reset(MemoryArena *arena) { arena->used = 0; }
 
 void arena_free(MemoryArena *arena) {
-    if (arena->mem != NULL) munmap(arena->mem, arena->size);
-    arena->mem = NULL;
+    if (arena->mem_start != NULL) munmap(arena->mem_start, arena->size);
+    arena->mem_start = NULL;
     arena->size = 0;
     arena->used = 0;
     if (arena != NULL) munmap(arena, sizeof(MemoryArena));

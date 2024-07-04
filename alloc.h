@@ -36,12 +36,14 @@ void HW_TEARDOWN(void);
 typedef struct {
   size_t size;
   size_t used;
-  void *mem;
+  void *mem_start;
+  void *mem_offset;
 } MemoryArena;
 
 MemoryArena *arena_init(size_t, bool);
 void *arena_alloc(MemoryArena *, size_t);
 void arena_reset(MemoryArena *);
 void arena_free(MemoryArena *);
+
 
 #endif // ALLOC_H_

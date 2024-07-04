@@ -54,7 +54,7 @@ typedef struct BHNode {
   bool is_partitioned;
   struct BHNode *children[MAX_CHILDREN];
   PhysicsEntity   *bodies[NUM_QUADS];
-  size_t  body_total; // total physical objects
+  size_t body_total; // total physical objects
   OccState occ_state; // maps to quadrants
   vec2 min; vec2 max; // spatial bounds
   vec2 cm;            // center of mass
