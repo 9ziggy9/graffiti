@@ -66,9 +66,6 @@ static inline bool body_in_bounds(vec2 min, vec2 max, vec2 pos) {
       && pos.y >= min.y && pos.y < max.y;
 }
 
-BHNode *bhtree_create(MemoryArena *, vec2, vec2);
-BHNode *bhtree_build_in_arena(MemoryArena *, PhysicsEntity *, size_t);
-
 typedef void BH_NODE_MAPPING;
 #define BH_NODE_MAP(FN, CODE)                          \
   BH_NODE_MAPPING FN(BHNode *node) {                   \
@@ -105,12 +102,22 @@ BH_NODE_MAPPING bhtree_apply_boundaries(BHNode *);
 
 void quad_state_log(OccState);
 
+BHNode *bhtree_create(MemoryArena *, vec2, vec2);
+BHNode *bhtree_build_in_arena(MemoryArena *, PhysicsEntity *, size_t);
+
 void bhtree_insert(MemoryArena *, BHNode *, PhysicsEntity *);
 void bhtree_integrate(integration_flag, BHNode *, double);
 
-void bhtree_apply_singular_gravity(BHNode *, vec2);
-void bhtree_apply_pairwise_gravity(PhysicsEntity *, BHNode *);
+static inline bool bh_condition(BHNode *n1, BHNode *n2, double theta) {
+  return (vec2sub(n1->max, n1->min).x / vec2dist(n1->cm, n2->cm)) < theta;
+}
+
+
 void bhtree_apply_pairwise_collisions(PhysicsEntity *, BHNode *);
+void bhtree_apply_singular_gravity(BHNode *, vec2);
+void bhtree_apply_collisions(BHNode *, PhysicsEntity *, GLuint);
+void bhtree_apply_pairwise_gravity(PhysicsEntity *, BHNode *);
+
 
 #endif // TREE_H_
 

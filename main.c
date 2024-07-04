@@ -26,7 +26,7 @@ PhysicsEntity *gen_n_particle_system(size_t N) {
       (vec2){(double)get_random(0, WIN_W), (double)get_random(0, WIN_H)},
       (vec2){(double)get_random(-SPD, SPD), (double)get_random(-SPD, SPD)},
       (vec2){0.0f, 0.0f},
-      (double)get_random(600, 600),
+      (double)get_random(800, 800),
       get_random_color_from_palette()
     );
     physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
@@ -51,7 +51,7 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(300);
 
-  SEED_RANDOM(9001);
+  SEED_RANDOM(11);
 
   // 1 MB per frame
   #define FRAME_MEMORY_SIZE 1024 * 512
@@ -59,35 +59,36 @@ int main(void) {
 
   /*NOTE: greater allocator will REQUIRE that gen_n_particle_system also
    be tied to the arena or generalized to mmap methods. */
-  #define NUM_PS 30
+  #define NUM_PS 4
   PhysicsEntity *particles = gen_n_particle_system(NUM_PS);
+  BHNode *ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
+  bhtree_apply_collisions(ptree, NULL, 0xFF0000FF);
 
   while (!glfwWindowShouldClose(win)) {
-    // TODO (idea): memory arena tagging
-    BHNode *ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
-    BEGIN_PHYSICS(dt);
-      bhtree_clear_forces(ptree);
-      bhtree_integrate(VERLET_POS, ptree, dt);
-      bhtree_apply_boundaries(ptree);
-      for (size_t p = 0; p < NUM_PS; p++) {
-        PhysicsEntity *body = &particles[p];
-        bhtree_apply_pairwise_collisions(body, ptree);
-      }
-      for (size_t p = 0; p < NUM_PS; p++) {
-        PhysicsEntity *body = &particles[p];
-        bhtree_apply_pairwise_gravity(body, ptree);
-      }
-      bhtree_integrate(VERLET_VEL, ptree, dt);
-    END_PHYSICS();
     BEGIN_FRAME();
+      /* BEGIN_PHYSICS(dt, 1); */
+      /*   /\* bhtree_integrate(VERLET_POS, ptree, dt); *\/ */
+      /*   bhtree_apply_boundaries(ptree); */
+      /*   /\* for (size_t p = 0; p < NUM_PS; p++) { *\/ */
+      /*   /\*   PhysicsEntity *body = &particles[p]; *\/ */
+      /*   /\*   bhtree_apply_pairwise_collisions(body, ptree); *\/ */
+      /*   /\* } *\/ */
+      /*   /\* bhtree_integrate(VERLET_VEL, ptree, dt); *\/ */
+      /*   /\* bhtree_clear_forces(ptree); *\/ */
+      /*   arena_reset(FRAME_ARENA); */
+      /* END_PHYSICS(); */
+
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       OPEN_SHADER(shd);
-        bhtree_draw(ptree);
+        for (size_t n = 0; n < NUM_PS; n++) {
+          PhysicsEntity *p = &particles[n];
+          draw_circle(p->q, (GLfloat)p->geom.circ.R, p->color);
+        }
       CLOSE_SHADER();
+
       glfwSwapBuffers(win);
       glfwPollEvents();
     END_FRAME();
-    arena_reset(FRAME_ARENA); // TODO (idea): memory arena tagging
   }
 
   arena_reset(FRAME_ARENA);

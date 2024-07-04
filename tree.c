@@ -130,9 +130,12 @@ _l_bhtree_part:
 
 BHNode *
 bhtree_build_in_arena(MemoryArena *arena, PhysicsEntity *particles, size_t N) {
-  BHNode *bh = bhtree_create(arena, (vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
-  for (size_t n = 0; n < N; n++) bhtree_insert(arena, bh, &particles[n]);
-  return bh;
+  if (arena->used == 0) {
+    BHNode *bh = bhtree_create(arena, (vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
+    for (size_t n = 0; n < N; n++) bhtree_insert(arena, bh, &particles[n]);
+    return bh;
+  }
+  return NULL;
 }
 
 void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
@@ -189,7 +192,7 @@ static void quadrant_gravity(PhysicsEntity *body, BHNode *node) {
 
 void bhtree_apply_pairwise_gravity(PhysicsEntity *body, BHNode *node) {
   if (!node) return;
-  if (!node->is_partitioned) quadrant_gravity(body, node);
+  quadrant_gravity(body, node);
   for (size_t n = 0; n < MAX_CHILDREN; n++) {
     bhtree_apply_pairwise_gravity(body, node->children[n]);
   }
@@ -197,17 +200,24 @@ void bhtree_apply_pairwise_gravity(PhysicsEntity *body, BHNode *node) {
 
 void bhtree_apply_pairwise_collisions(PhysicsEntity *body, BHNode *node) {
   if (!node) return;
-  if (!node->is_partitioned) {
-    for (size_t n = 0; n < MAX_CHILDREN; n++) {
-      PhysicsEntity *cobody = node->bodies[n];
-      if (body == cobody) continue;
-      if (cobody) {
-        force_pairwise_impulsive_collision(body, cobody);
-      }
-    }
+  for (size_t n = 0; n < NUM_QUADS; n++) {
+    PhysicsEntity *subbody = node->bodies[n];
+    if (subbody) force_pairwise_impulsive_collision(body, subbody);
   }
   for (size_t n = 0; n < MAX_CHILDREN; n++) {
     bhtree_apply_pairwise_collisions(body, node->children[n]);
+  }
+}
+
+void bhtree_apply_collisions(BHNode *root, PhysicsEntity *body, GLuint color) {
+  static size_t __stack_calls = 0;
+  if (!root) return;
+  __stack_calls++;
+  printf("STACK CALLS: %zu\n", __stack_calls);
+  for (int i = 0; i < NUM_QUADS; i++) {
+    body = root->bodies[i];
+    if (!body) continue;
+    body->color = color;
   }
 }
 

@@ -31,19 +31,20 @@ void force_pairwise_impulsive_collision(PhysicsEntity *, PhysicsEntity *);
 PhysicsEntity new_physics_entity(vec2, vec2, vec2, double, GLuint);
 void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
 
-#define BEGIN_PHYSICS(DT)                   \
-  static double __t0 = 0.0f;                \
-  static double __acc = 0.0f;               \
-  static const double __dt = 1.0f / 300.0f; \
-  static const double DT = __dt;            \
-  double __t1 = glfwGetTime();              \
-  double __delta_t = __t1 - __t0;           \
-  __t0 = __t1;                              \
-  __acc += __delta_t;                       \
-  while (__acc >= __dt) {                   
-#define END_PHYSICS()                       \
-    __acc -= __dt;                          \
-  }
+#define BEGIN_PHYSICS(DT, COUNT)                \
+  static double __t0 = 0.0f;                    \
+  static double __acc = 0.0f;                   \
+  static const double __dt = 1.0f / 300.0f;     \
+  static const double DT = __dt / COUNT;        \
+  double __t1 = glfwGetTime();                  \
+  __acc += __t1 - __t0;                         \
+  __t0 = __t1;                                  \
+  while (__acc >= __dt) {                       \
+    int __step_count = COUNT;                   \
+    __acc -= __dt;                              \
+  while(__step_count > 0) {
+#define END_PHYSICS()                           \
+  __step_count--; }}
 
 
 #endif // PHYSICS_H_

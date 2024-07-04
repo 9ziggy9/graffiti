@@ -64,8 +64,8 @@ static void _resolve_impulse_collision(PhysicsEntity *c1,
 }
 
 void force_pairwise_impulsive_collision(PhysicsEntity *pi, PhysicsEntity *pj) {
-  vec2 diff = (vec2) { pj->q.x - pi->q.x, pj->q.y - pi->q.y };
-  double overlap = pi->geom.circ.R + pi->geom.circ.R - vec2mag(diff);
+  vec2 diff = vec2sub(pj->q, pi->q);
+  double overlap = (pi->geom.circ.R + pi->geom.circ.R) - vec2mag(diff);
   if (overlap <= 0.0f) return;
   _resolve_impulse_collision(pi, pj, diff, overlap, 0.33f);
 }
