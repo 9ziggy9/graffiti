@@ -25,7 +25,10 @@ GLFWwindow *window_create(int w, int h, const char *title) {
   return win;
 }
 
-void window_attach_handler(GLFWwindow *win, GLFWkeyfun fn) {
-  glfwSetKeyCallback(win, fn);
+void
+window_attach_handler(GLFWwindow *win, GLFWkeyfun kfun, GLFWmousebuttonfun mfun)
+{
+  glfwSetKeyCallback(win, kfun);
+  glfwSetMouseButtonCallback(win, mfun);
   SUCCESS_LOG("successfully attached window handler");
 }

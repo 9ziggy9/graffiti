@@ -10,6 +10,6 @@
   } while(0)                                            \
 
 GLFWwindow *window_create(int, int, const char *);
-void window_attach_handler(GLFWwindow *, GLFWkeyfun);
+void window_attach_handler(GLFWwindow *, GLFWkeyfun, GLFWmousebuttonfun);
 
 #endif // IO_H_

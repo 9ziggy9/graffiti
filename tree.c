@@ -1,13 +1,9 @@
 #include "tree.h"
+#include "log.h"
 #include "primitives.h"
 #include "config.h"
 
 #include <stdio.h>
-
-BH_NODE_MAP(bhtree_draw, {
-  PhysicsEntity *body = node->bodies[n];
-  if (body) draw_circle(body->q, (GLfloat) body->geom.circ.R, body->color);
-})
 
 BH_NODE_MAP(bhtree_clear_forces, {
   PhysicsEntity *body = node->bodies[n];
@@ -35,6 +31,7 @@ BH_NODE_MAP(bhtree_apply_boundaries, {
 })
 
 static void draw_quad(BHNode *node) {
+  if (!node) return;
   EACH_QUAD(node->min, node->max, {
     draw_rectangle_boundary(__qmin, __qmax, 0xFF0000FF);
   });
@@ -59,10 +56,9 @@ void quad_state_log(OccState state) {
 void bhtree_draw_quads(BHNode *node, GLuint color) {
   if (!node) return;
   draw_quad(node);
-  if (node->is_partitioned) {
-    for (size_t n = 0; n < MAX_CHILDREN; n++) {
-      bhtree_draw_quads(node->children[n], color);
-    }
+  draw_circle(node->cm, 3.0, 0xFFFFFFFF);
+  for (size_t n = 0; n < MAX_CHILDREN; n++) {
+    bhtree_draw_quads(node->children[n], color);
   }
 }
 
@@ -71,7 +67,7 @@ BHNode *bhtree_create(MemoryArena *arena, vec2 min, vec2 max) {
   node->min = min; node->max = max;
   node->body_total = 0; node->is_partitioned = false;
   node->occ_state = OCC_0;
-  node->cm = (vec2){0.0, 0.0}; node->m = 0.0;
+  node->cm = (vec2){-1.0, -1.0}; node->m = 0.0;
   for (int n = 0; n < MAX_CHILDREN; n++) node->children[n] = NULL;
   for (int n = 0; n < NUM_QUADS; n++)      node->bodies[n] = NULL;
   return node;
@@ -84,30 +80,100 @@ static void node_partition(MemoryArena *arena, BHNode *node) {
   node->is_partitioned = true;
 }
 
-void bhtree_insert(MemoryArena *arena, BHNode *node, PhysicsEntity *body) {
-  if (!body_in_bounds(node->min, node->max, body->q)) return;
+static vec2 quad_partition_min(vec2 min, vec2 max, Quad q) {
+  vec2 delta_r = vec2sub(max, min);
+  vec2 delta_x = vec2scale(0.5, vec2proj(delta_r, X_HAT));
+  vec2 delta_y = vec2scale(0.5, vec2proj(delta_r, Y_HAT));
+  vec2 delta_q = vec2add(delta_x, delta_y);
+  switch (q) {
+  case QUAD_NW: return vec2add(min, delta_y);
+  case QUAD_NE: return vec2add(min, delta_q);
+  case QUAD_SW: return min;
+  case QUAD_SE: return vec2add(min, delta_x);
+  default: PANIC_WITH(OCC_QUAD_BAD_CONVERSION);
+  }
+}
+
+static vec2 quad_partition_max(vec2 min, vec2 max, Quad q) {
+  vec2 delta_r = vec2sub(max, min);
+  vec2 delta_x = vec2scale(0.5, vec2proj(delta_r, X_HAT));
+  vec2 delta_y = vec2scale(0.5, vec2proj(delta_r, Y_HAT));
+  vec2 delta_q = vec2add(delta_x, delta_y);
+  vec2 center  = vec2add(min, delta_q);
+  switch (q) {
+  case QUAD_NW: return vec2add(center, delta_y);
+  case QUAD_NE: return vec2add(center, delta_q);
+  case QUAD_SW: return center;
+  case QUAD_SE: return vec2add(center, delta_x);
+  default: PANIC_WITH(OCC_QUAD_BAD_CONVERSION);
+  }
+}
+
+static BHNode *child_partition(MemoryArena *arena, BHNode *parent, Quad q) {
+  vec2 min = quad_partition_min(parent->min, parent->max, q);
+  vec2 max = quad_partition_max(parent->min, parent->max, q);
+  parent->children[q] = bhtree_create(arena, min, max);
+  parent->is_partitioned = true;
+  return parent->children[q];
+}
+
+static void update_cm(BHNode *node, PhysicsEntity *body) {
   node->m += body->m;
   node->body_total++;
-  node->cm =
-    vec2scale(1 / (node->m), vec2add(vec2scale(node->m - body->m, node->cm),
-                                     vec2scale(body->m, body->q)));
-  PhysicsEntity *cobody = NULL;
+  node->cm = vec2scale(1 / (node->m),
+                       vec2add(vec2scale(node->m - body->m, node->cm),
+                               vec2scale(body->m, body->q)));
+}
 
+static void insert_body(MemoryArena *arena, BHNode *node, PhysicsEntity *body) {
   const Quad quad_target = quad_map(node, body->q);
-  if (node->occ_state & quad_to_occ(quad_target)) {
-    cobody = node->bodies[quad_target];
-    node->bodies[quad_target] = NULL;
-    node->occ_state &= ~quad_to_occ(quad_target);
-    if (!(node->is_partitioned)) node_partition(arena, node); 
-    for (size_t n = 0; n < MAX_CHILDREN; n++) {
-      bhtree_insert(arena, node->children[n], body);
-      if (cobody) bhtree_insert(arena, node->children[n], cobody);
-    }
-    return;
-  }
   node->bodies[quad_target] = body;
   node->occ_state |= quad_to_occ(quad_target);
+}
+
+static PhysicsEntity *remove_body_at_quad(BHNode *node, Quad quad) {
+  PhysicsEntity *body = node->bodies[quad];
+  if (body) {
+    node->bodies[quad] = NULL;
+    node->occ_state &= ~quad;
+  }
+  return body;
+}
+
+void bhtree_insert(MemoryArena *arena, BHNode *node, PhysicsEntity *body) {
+  if (!node) return;
+  if (!body_in_bounds(node->min, node->max, body->q)) return;
+
+  update_cm(node, body);
+
+  const Quad quad_target = quad_map(node, body->q);
+  if (!(node->occ_state & quad_to_occ(quad_target))) {
+    insert_body(arena, node, body);
+    return;
+  }
+
+  PhysicsEntity *cobody = remove_body_at_quad(node, quad_target);
+  if (cobody) {
+    BHNode *child = child_partition(arena, node, quad_target);
+    if (!child) PANIC_WITH(BH_CHILD_NODE_DOES_NOT_EXIST);
+    bhtree_insert(arena, child, body);
+    bhtree_insert(arena, child, cobody);
+    return;
+  }
+
+  for (size_t n = 0; n < MAX_CHILDREN; n++)
+    bhtree_insert(arena, node->children[n], body);
+
   return;
+}
+
+void bhtree_draw(BHNode *node) {
+  if (!node) return;
+  for (size_t n = 0; n < NUM_QUADS; n++) {
+    PhysicsEntity *body = node->bodies[n];
+    if (body) draw_circle(body->q, body->geom.circ.R, body->color);
+  }
+  for (size_t n = 0; n < MAX_CHILDREN; n++) bhtree_draw(node->children[n]);
 }
 
 BHNode *
@@ -192,10 +258,7 @@ void bhtree_apply_pairwise_collisions(PhysicsEntity *body, BHNode *node) {
 }
 
 void bhtree_apply_collisions(BHNode *root, PhysicsEntity *body, GLuint color) {
-  static size_t __stack_calls = 0;
   if (!root) return;
-  __stack_calls++;
-  printf("STACK CALLS: %zu\n", __stack_calls);
   for (int i = 0; i < NUM_QUADS; i++) {
     body = root->bodies[i];
     if (!body) continue;

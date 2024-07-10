@@ -122,7 +122,10 @@ void *arena_alloc(MemoryArena *arena, size_t size) {
     return arena->mem_offset;
 }
 
-void arena_reset(MemoryArena *arena) { arena->used = 0; }
+void arena_reset(MemoryArena *arena) {
+  arena->used = 0;
+  arena->mem_offset = arena->mem_start;
+}
 
 void arena_free(MemoryArena *arena) {
     if (arena->mem_start != NULL) munmap(arena->mem_start, arena->size);

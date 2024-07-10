@@ -25,13 +25,13 @@ typedef enum {
 
 typedef enum {
   QUAD_SW = 0,
-  QUAD_NE,
-  QUAD_NW,
   QUAD_SE,
+  QUAD_NW,
+  QUAD_NE,
 } Quad;
 
 static inline OccState quad_to_occ(Quad q) {
-  switch (q) {
+ switch (q) {
   case QUAD_SW: return OCC_SW;
   case QUAD_NE: return OCC_NE;
   case QUAD_NW: return OCC_NW;
