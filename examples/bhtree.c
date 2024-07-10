@@ -27,7 +27,7 @@ PhysicsEntity particles[MAX_PARTICLES];
 MemoryArena *FRAME_ARENA;
 BHNode *ptree;
 
-#define SPD 120
+#define SPD 25
 void gen_n_particle_system(size_t N) {
   INFO_LOG("ALLOCATING HEAP SIZE FOR PARTICLES:");
   printf("%zu Kb \n", (N * sizeof(PhysicsEntity)) / 1024);
@@ -36,7 +36,7 @@ void gen_n_particle_system(size_t N) {
       (vec2){(double)get_random(0, WIN_W), (double)get_random(0, WIN_H)},
       (vec2){(double)get_random(-SPD, SPD), (double)get_random(-SPD, SPD)},
       (vec2){0.0f, 0.0f},
-      (double)get_random(120, 120),
+      (double)get_random(100, 100),
       get_random_color_from_palette()
     );
     physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
@@ -64,15 +64,14 @@ int main(void) {
   SEED_RANDOM(9001);
 
   FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
-  gen_n_particle_system(32);
+  gen_n_particle_system(1010);
 
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
-      ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
-      BEGIN_PHYSICS(dt, 8);
+    ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
+      BEGIN_PHYSICS(dt, 1);
         bhtree_integrate(VERLET_POS, ptree, dt);
         bhtree_apply_boundaries(ptree);
-        bhtree_apply_collisions(ptree);
         bhtree_integrate(VERLET_VEL, ptree, dt);
         bhtree_clear_forces(ptree);
       END_PHYSICS();
@@ -80,14 +79,7 @@ int main(void) {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       OPEN_SHADER(shd);
         bhtree_draw(ptree);
-        draw_rectangle_boundary(vec2sub(particles[0].q,
-                                        (vec2){2 * particles[0].geom.circ.R,
-                                               2 * particles[0].geom.circ.R}),
-                                vec2add(particles[0].q,
-                                        (vec2){2 * particles[0].geom.circ.R,
-                                               2 * particles[0].geom.circ.R}),
-                                0x00FF00FF);
-        bhtree_draw_quads(ptree, 0xFFFFFFFF);
+        bhtree_draw_quads(ptree, 0x00FF00FF);
       CLOSE_SHADER();
 
       glfwSwapBuffers(win);
