@@ -36,7 +36,7 @@ void gen_n_particle_system(size_t N) {
       (vec2){(double)get_random(0, WIN_W), (double)get_random(0, WIN_H)},
       (vec2){(double)get_random(-SPD, SPD), (double)get_random(-SPD, SPD)},
       (vec2){0.0f, 0.0f},
-      (double)get_random(120, 120),
+      (double)get_random(240, 240),
       get_random_color_from_palette()
     );
     physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
@@ -64,7 +64,7 @@ int main(void) {
   SEED_RANDOM(9001);
 
   FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
-  gen_n_particle_system(32);
+  gen_n_particle_system(200);
 
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
@@ -80,19 +80,20 @@ int main(void) {
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       OPEN_SHADER(shd);
         bhtree_draw(ptree);
-        draw_rectangle_boundary(vec2sub(particles[0].q,
-                                        (vec2){2 * particles[0].geom.circ.R,
-                                               2 * particles[0].geom.circ.R}),
-                                vec2add(particles[0].q,
-                                        (vec2){2 * particles[0].geom.circ.R,
-                                               2 * particles[0].geom.circ.R}),
-                                0x00FF00FF);
+        /* draw_rectangle_boundary(vec2sub(particles[0].q, */
+        /*                                 (vec2){2 * particles[0].geom.circ.R, */
+        /*                                        2 * particles[0].geom.circ.R}), */
+        /*                         vec2add(particles[0].q, */
+        /*                                 (vec2){2 * particles[0].geom.circ.R, */
+        /*                                        2 * particles[0].geom.circ.R}), */
+        /*                         0x00FF00FF); */
         bhtree_draw_quads(ptree, 0xFFFFFFFF);
       CLOSE_SHADER();
 
       glfwSwapBuffers(win);
       glfwPollEvents();
-    arena_reset(FRAME_ARENA);
+
+      arena_reset(FRAME_ARENA);
     END_FRAME();
   }
 

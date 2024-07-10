@@ -204,31 +204,24 @@ void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
     bhtree_integrate(flag, node->children[n], dt);
 }
 
-static BHNode **
-spatial_local_nodes(BHNode *node, PhysicsEntity *body, double threshhold)
+static void
+bhtree_apply_subcollisions(size_t i, PhysicsEntity *p_i, BHNode *node)
 {
-  
-}
-
-static void bhtree_apply_subcollisions(PhysicsEntity *body, BHNode *node) {
   if (!node) return;
+  for (size_t j = i + 1; j < NUM_QUADS; j++) {
+    PhysicsEntity *p_j = node->bodies[j];
+    if (p_i && p_j) force_pairwise_impulsive_collision(p_i, p_j);
+  }
   for (size_t n = 0; n < MAX_CHILDREN; n++) {
-    PhysicsEntity *subbody = node->bodies[n];
-    if (subbody) force_pairwise_impulsive_collision(body, subbody);
+    bhtree_apply_subcollisions(-1, p_i, node->children[n]);
   }
 }
 
 void bhtree_apply_collisions(BHNode *node) {
   if (!node) return;
   for (size_t i = 0; i < NUM_QUADS; i++) {
-    for (size_t j = i + 1; j < NUM_QUADS; j++) {
-      PhysicsEntity *p_i = node->bodies[i];
-      PhysicsEntity *p_j = node->bodies[j];
-      if (p_i && p_j) {
-        force_pairwise_impulsive_collision(p_i, p_j);
-        bhtree_apply_subcollisions(p_i, node->children[i]);
-      }
-    }
+    PhysicsEntity *p_i = node->bodies[i];
+    bhtree_apply_subcollisions(i, p_i, node);
   }
   for (size_t n = 0; n < MAX_CHILDREN; n++) {
     bhtree_apply_collisions(node->children[n]);
