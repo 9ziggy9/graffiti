@@ -1,9 +1,9 @@
+#include <stdio.h>
+
 #include "tree.h"
 #include "log.h"
 #include "primitives.h"
 #include "config.h"
-
-#include <stdio.h>
 
 BH_NODE_MAP(bhtree_clear_forces, {
   PhysicsEntity *body = node->bodies[n];
@@ -67,9 +67,10 @@ BHNode *bhtree_create(MemoryArena *arena, vec2 min, vec2 max) {
   node->min = min; node->max = max;
   node->body_total = 0; node->is_partitioned = false;
   node->occ_state = OCC_0;
-  node->cm = (vec2){-1.0, -1.0}; node->m = 0.0;
+  node->cm = (vec2){-1.0, -1.0};
+  node->m = 0.0;
   for (int n = 0; n < MAX_CHILDREN; n++) node->children[n] = NULL;
-  for (int n = 0; n < NUM_QUADS; n++)      node->bodies[n] = NULL;
+  for (int n = 0; n < NUM_QUADS;    n++)   node->bodies[n] = NULL;
   return node;
 }
 
@@ -133,10 +134,7 @@ static void insert_body(MemoryArena *arena, BHNode *node, PhysicsEntity *body) {
 
 static PhysicsEntity *remove_body_at_quad(BHNode *node, Quad quad) {
   PhysicsEntity *body = node->bodies[quad];
-  if (body) {
-    node->bodies[quad] = NULL;
-    node->occ_state &= ~quad;
-  }
+  if (body) node->bodies[quad] = NULL;
   return body;
 }
 
@@ -206,6 +204,7 @@ void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
     bhtree_integrate(flag, node->children[n], dt);
 }
 
+#if 0 // deprecated
 void bhtree_apply_singular_gravity(BHNode *node, vec2 sink_source) {
   (void) sink_source;
   if (!node) return;
@@ -267,7 +266,6 @@ void bhtree_apply_collisions(BHNode *root, PhysicsEntity *body, GLuint color) {
   bhtree_apply_collisions(root->children[3], body, color);
 }
 
-#if 0 // deprecated
 BHSystem new_bh_system(BHNode *tree) {
   va_list args;
   va_start(args, tree);

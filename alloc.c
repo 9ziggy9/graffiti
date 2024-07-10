@@ -102,24 +102,31 @@ void HW_TEARDOWN(void) {
 
 
 MemoryArena *arena_init(size_t bytes, bool page_strat) {
-  MemoryArena *arena = mmap(NULL, sizeof(MemoryArena), PROT_READ | PROT_WRITE,
+  MemoryArena *arena = mmap(NULL, sizeof(MemoryArena),
+                            PROT_READ | PROT_WRITE,
                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
   if (arena == MAP_FAILED) PANIC_WITH(ARENA_INIT_MMAP_ARENA_FAIL);
+
   arena->size = bytes;
   arena->used = 0;
-  arena->mem_start = mmap(NULL, bytes, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  arena->mem_start = mmap(NULL, bytes,
+                          PROT_READ | PROT_WRITE,
+                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
   if (arena->mem_start == NULL) PANIC_WITH(ARENA_INIT_MMAP_MEM_FAIL);
   arena->mem_offset = arena->mem_start;
+
   if (page_strat) TOUCH_PAGES(arena); // force physical pages
   return arena;
 }
 
 void *arena_alloc(MemoryArena *arena, size_t size) {
-    if (arena->used + size > arena->size) PANIC_WITH(ARENA_ALLOC_SIZE_OVERFLOW);
-    arena->used += size;
-    arena->mem_offset = (uint8_t *)arena->mem_offset + arena->used;
-    return arena->mem_offset;
+  if (arena->used + size > arena->size) PANIC_WITH(ARENA_ALLOC_SIZE_OVERFLOW);
+  void *ptr = arena->mem_offset;
+  arena->mem_offset = (uint8_t *)arena->mem_offset + size;
+  arena->used += size;
+  return ptr;
 }
 
 void arena_reset(MemoryArena *arena) {
@@ -128,12 +135,12 @@ void arena_reset(MemoryArena *arena) {
 }
 
 void arena_free(MemoryArena *arena) {
-    if (arena->mem_start != NULL) munmap(arena->mem_start, arena->size);
-    arena->mem_start = NULL;
-    arena->size = 0;
-    arena->used = 0;
-    if (arena != NULL) munmap(arena, sizeof(MemoryArena));
-    arena = NULL;
+  if (arena->mem_start != NULL) munmap(arena->mem_start, arena->size);
+  arena->mem_start = NULL;
+  arena->size = 0;
+  arena->used = 0;
+  if (arena != NULL) munmap(arena, sizeof(MemoryArena));
+  arena = NULL;
 }
 
 #if 0 // deprecated

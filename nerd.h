@@ -61,6 +61,17 @@ static inline vec2 vec2proj(vec2 v, vec2 r) {
 
 #define SEED_RANDOM(N) do { srand(N); } while(0)
 
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+  ((byte) & 0x80 ? '1' : '0'), \
+  ((byte) & 0x40 ? '1' : '0'), \
+  ((byte) & 0x20 ? '1' : '0'), \
+  ((byte) & 0x10 ? '1' : '0'), \
+  ((byte) & 0x08 ? '1' : '0'), \
+  ((byte) & 0x04 ? '1' : '0'), \
+  ((byte) & 0x02 ? '1' : '0'), \
+  ((byte) & 0x01 ? '1' : '0') 
+
 GLint get_random(int, int);
 GLuint get_random_color(void);
 GLuint get_random_color_from_palette(void);

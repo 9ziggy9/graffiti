@@ -2,6 +2,7 @@ CC=gcc
 LIBS=-lm
 CFLAGS=-Wall -Wextra -Wconversion -pedantic
 GLFLAGS=-lglfw -lGL -lGLEW
+DBG=-fsanitize=address -g
 EXE=./run
 TRASH=./run *.o *.so
 SRCS = primitives.c shader.c alloc.c frames.c physics.c tree.c io.c nerd.c

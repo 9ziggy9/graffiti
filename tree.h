@@ -1,10 +1,10 @@
 #ifndef TREE_H_
 #define TREE_H_
-#include "physics.h"
-#include "alloc.h"
-
 #include <stdbool.h>
 #include <math.h>
+
+#include "physics.h"
+#include "alloc.h"
 
 #define MAX_CHILDREN 4
 #define NUM_QUADS 4

@@ -17,10 +17,16 @@ void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
 void handle_mouse(GLFWwindow *, int, int, int);
 
-#define MAX_PARTICLES 200
+#define MAX_PARTICLES 2000
 size_t NUM_PS = 0;
 
-PhysicsEntity particles[200];
+PhysicsEntity particles[MAX_PARTICLES];
+
+// 1 MB per frame
+#define FRAME_MEMORY_SIZE 1024 * 512
+MemoryArena *FRAME_ARENA;
+BHNode *ptree;
+
 
 #define SPD 25
 PhysicsEntity *gen_n_particle_system(size_t N) {
@@ -59,19 +65,17 @@ int main(void) {
 
   SEED_RANDOM(9001);
 
-  // 1 MB per frame
-  #define FRAME_MEMORY_SIZE 1024 * 512
-  MemoryArena *FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
+  FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
 
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
-    BHNode *ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
-      /* BEGIN_PHYSICS(dt, 1); */
-      /*   bhtree_integrate(VERLET_POS, ptree, dt); */
-      /*   bhtree_apply_boundaries(ptree); */
-      /*   bhtree_integrate(VERLET_VEL, ptree, dt); */
-      /*   bhtree_clear_forces(ptree); */
-      /* END_PHYSICS(); */
+    ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
+      BEGIN_PHYSICS(dt, 1);
+        bhtree_integrate(VERLET_POS, ptree, dt);
+        bhtree_apply_boundaries(ptree);
+        bhtree_integrate(VERLET_VEL, ptree, dt);
+        bhtree_clear_forces(ptree);
+      END_PHYSICS();
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       OPEN_SHADER(shd);
@@ -110,6 +114,7 @@ void handle_key(GLFWwindow *win, int key, int scode, int act, int mods) {
   if (key == GLFW_KEY_C) {
     for (size_t n = 0; n < NUM_PS; n++) memset(particles, 0, MAX_PARTICLES);
     NUM_PS = 0;
+    ptree = NULL;
   }
 }
 
@@ -130,5 +135,6 @@ void handle_mouse(GLFWwindow *win, int button, int act, int mods) {
         .circ.R = 0.08 * particles[NUM_PS].m
     });
     NUM_PS++;
+    printf("NUMBER OF PARTICLES: %zu\n", NUM_PS);
   }
 }
