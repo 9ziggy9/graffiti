@@ -15,7 +15,8 @@
 
 void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
-void handle_mouse(GLFWwindow *, int, int, int);
+void handle_mclick(GLFWwindow *, int, int, int);
+void handle_mmove(GLFWwindow *, double, double);
 
 #define MAX_PARTICLES 2000
 size_t NUM_PS = 0;
@@ -26,6 +27,7 @@ PhysicsEntity particles[MAX_PARTICLES];
 #define FRAME_MEMORY_SIZE 1024 * 512
 MemoryArena *FRAME_ARENA;
 BHNode *ptree;
+vec2 CURSOR;
 
 #define SPD 120
 void gen_n_particle_system(size_t N) {
@@ -51,7 +53,7 @@ int main(void) {
   WINS_INIT(window_err_cb);
 
   GLFWwindow *win = window_create(WIN_W, WIN_H, WIN_T1);
-  window_attach_handler(win, handle_key, handle_mouse);
+  window_attach_handler(win, handle_key, handle_mclick, handle_mmove);
 
   glfwMakeContextCurrent(win);
 
@@ -61,39 +63,53 @@ int main(void) {
   ENABLE_PRIMITIVES();
   FRAME_TARGET_FPS(300);
 
-  SEED_RANDOM(9001);
+  SEED_RANDOM(9020);
 
   FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
-  gen_n_particle_system(200);
+  gen_n_particle_system(64);
+  ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
+  /* NodeRefs refs = get_bounded_nodes(ptree, &particles[4]); */
+  /* BoundingBox test_box = generate_bounding_box(&particles[4]); */
 
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
-      ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
-      BEGIN_PHYSICS(dt, 8);
-        bhtree_integrate(VERLET_POS, ptree, dt);
-        bhtree_apply_boundaries(ptree);
-        bhtree_apply_collisions(ptree);
-        bhtree_integrate(VERLET_VEL, ptree, dt);
-        bhtree_clear_forces(ptree);
-      END_PHYSICS();
+      /* BEGIN_PHYSICS(dt, 8); */
+      /*   bhtree_integrate(VERLET_POS, ptree, dt); */
+      /*   bhtree_apply_boundaries(ptree); */
+      /*   bhtree_apply_collisions(ptree); */
+      /*   bhtree_integrate(VERLET_VEL, ptree, dt); */
+      /*   bhtree_clear_forces(ptree); */
+      /* END_PHYSICS(); */
 
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       OPEN_SHADER(shd);
-        bhtree_draw(ptree);
-        /* draw_rectangle_boundary(vec2sub(particles[0].q, */
+        /* draw_rectangle_filled(vec2sub(particles[0].q, */
         /*                                 (vec2){2 * particles[0].geom.circ.R, */
         /*                                        2 * particles[0].geom.circ.R}), */
         /*                         vec2add(particles[0].q, */
         /*                                 (vec2){2 * particles[0].geom.circ.R, */
         /*                                        2 * particles[0].geom.circ.R}), */
         /*                         0x00FF00FF); */
+
+        /* if (refs.nw) draw_rectangle_filled(refs.nw->min, */
+        /*                                    refs.nw->max, 0xFFFFFFFF); */
+        /* if (refs.ne) draw_rectangle_filled(refs.ne->min, */
+        /*                                    refs.ne->max, 0xFFFFFFFF); */
+        /* if (refs.sw) draw_rectangle_filled(refs.sw->min, */
+        /*                                    refs.sw->max, 0xFFFFFFFF); */
+        /* if (refs.se) draw_rectangle_filled(refs.se->min, */
+        /*                                    refs.se->max, 0xFFFFFFFF); */
+
+        /* draw_rectangle_filled(test_box.sw, test_box.ne, 0x00FF00FF); */
+        draw_rectangle_filled(vec2sub(CURSOR, (vec2){20.0, 20.0}),
+                              vec2add(CURSOR, (vec2){20.0, 20.0}),
+                              0x00FF00FF);
+        bhtree_draw(ptree);
         bhtree_draw_quads(ptree, 0xFFFFFFFF);
       CLOSE_SHADER();
 
       glfwSwapBuffers(win);
       glfwPollEvents();
-
-      arena_reset(FRAME_ARENA);
     END_FRAME();
   }
 
@@ -116,13 +132,13 @@ void handle_key(GLFWwindow *win, int key, int scode, int act, int mods) {
     glfwSetWindowShouldClose(win, GLFW_TRUE);
   }
   if (key == GLFW_KEY_C) {
-    for (size_t n = 0; n < NUM_PS; n++) memset(particles, 0, MAX_PARTICLES);
+    for (size_t n = 0; n < NUM_PS; n++) memset(particles, 0, sizeof(particles));
     NUM_PS = 0;
     ptree = NULL;
   }
 }
 
-void handle_mouse(GLFWwindow *win, int button, int act, int mods) {
+void handle_mclick(GLFWwindow *win, int button, int act, int mods) {
   (void) mods;
   if (button == GLFW_MOUSE_BUTTON_LEFT && act == GLFW_PRESS) {
     double x, y;
@@ -142,4 +158,9 @@ void handle_mouse(GLFWwindow *win, int button, int act, int mods) {
     NUM_PS++;
     printf("NUMBER OF PARTICLES: %zu\n", NUM_PS);
   }
+}
+
+void handle_mmove(GLFWwindow *win, double x, double y) {
+  CURSOR.x = x; CURSOR.y = WIN_H - y;
+  printf("MOUSE AT (%f, %f)\n", CURSOR.x, CURSOR.y);
 }

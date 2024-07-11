@@ -30,6 +30,8 @@ typedef enum {
   QUAD_NE,
 } Quad;
 
+typedef struct { vec2 nw, ne, sw, se; } BoundingBox;
+
 static inline OccState quad_to_occ(Quad q) {
  switch (q) {
   case QUAD_SW: return OCC_SW;
@@ -60,6 +62,8 @@ typedef struct BHNode {
   vec2 cm;            // center of mass
   double m;           // total mass
 } BHNode;
+
+typedef struct { BHNode *nw, *ne, *sw, *se; } NodeRefs;
 
 static inline bool body_in_bounds(vec2 min, vec2 max, vec2 pos) {
   return pos.x >= min.x && pos.x < max.x
@@ -111,6 +115,9 @@ BHNode *bhtree_build_in_arena(MemoryArena *, PhysicsEntity *, size_t);
 void bhtree_insert(MemoryArena *, BHNode *, PhysicsEntity *);
 void bhtree_integrate(integration_flag, BHNode *, double);
 void bhtree_apply_collisions(BHNode *);
+
+BoundingBox generate_bounding_box(PhysicsEntity *);
+NodeRefs get_bounded_nodes(BHNode *, PhysicsEntity *);
 
 #endif // TREE_H_
 

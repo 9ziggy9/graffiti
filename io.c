@@ -25,10 +25,13 @@ GLFWwindow *window_create(int w, int h, const char *title) {
   return win;
 }
 
-void
-window_attach_handler(GLFWwindow *win, GLFWkeyfun kfun, GLFWmousebuttonfun mfun)
+void window_attach_handler(GLFWwindow *win,
+                           GLFWkeyfun key_fn,
+                           GLFWmousebuttonfun mclick_fn,
+                           GLFWcursorposfun mmove_fn)
 {
-  glfwSetKeyCallback(win, kfun);
-  glfwSetMouseButtonCallback(win, mfun);
+  glfwSetKeyCallback(win, key_fn);
+  glfwSetMouseButtonCallback(win, mclick_fn);
+  glfwSetCursorPosCallback(win, mmove_fn);
   SUCCESS_LOG("successfully attached window handler");
 }

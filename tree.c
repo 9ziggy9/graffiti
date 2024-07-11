@@ -74,13 +74,6 @@ BHNode *bhtree_create(MemoryArena *arena, vec2 min, vec2 max) {
   return node;
 }
 
-static void node_partition(MemoryArena *arena, BHNode *node) {
-  EACH_QUAD(node->min, node->max, {
-      node->children[i + 2 * j] = bhtree_create(arena, __qmin, __qmax);
-  });
-  node->is_partitioned = true;
-}
-
 static vec2 quad_partition_min(vec2 min, vec2 max, Quad q) {
   vec2 delta_r = vec2sub(max, min);
   vec2 delta_x = vec2scale(0.5, vec2proj(delta_r, X_HAT));
@@ -126,7 +119,7 @@ static void update_cm(BHNode *node, PhysicsEntity *body) {
                                vec2scale(body->m, body->q)));
 }
 
-static void insert_body(MemoryArena *arena, BHNode *node, PhysicsEntity *body) {
+static void insert_body(BHNode *node, PhysicsEntity *body) {
   const Quad quad_target = quad_map(node, body->q);
   node->bodies[quad_target] = body;
   node->occ_state |= quad_to_occ(quad_target);
@@ -146,7 +139,7 @@ void bhtree_insert(MemoryArena *arena, BHNode *node, PhysicsEntity *body) {
 
   const Quad quad_target = quad_map(node, body->q);
   if (!(node->occ_state & quad_to_occ(quad_target))) {
-    insert_body(arena, node, body);
+    insert_body(node, body);
     return;
   }
 
@@ -169,7 +162,7 @@ void bhtree_draw(BHNode *node) {
   if (!node) return;
   for (size_t n = 0; n < NUM_QUADS; n++) {
     PhysicsEntity *body = node->bodies[n];
-    if (body) draw_circle(body->q, body->geom.circ.R, body->color);
+    if (body) draw_circle(body->q, (GLfloat)body->geom.circ.R, body->color);
   }
   for (size_t n = 0; n < MAX_CHILDREN; n++) bhtree_draw(node->children[n]);
 }
@@ -204,6 +197,39 @@ void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
     bhtree_integrate(flag, node->children[n], dt);
 }
 
+// hardcoded for circular geometry
+BoundingBox generate_bounding_box(PhysicsEntity *body) {
+  double r = body->geom.circ.R;
+  return (BoundingBox) {
+    (vec2){body->q.x - r, body->q.y + r},
+    (vec2){body->q.x + r, body->q.y + r},
+    (vec2){body->q.x - r, body->q.y - r},
+    (vec2){body->q.x + r, body->q.y - r},
+  };
+}
+
+static BHNode *_get_bounded_node(BHNode *node, vec2 corner) {
+  if (!node) return NULL;
+  while (node->is_partitioned) {
+    Quad quad = quad_map(node, corner);
+    node = node->children[quad];
+    if (!node) return NULL;
+  }
+  return node;
+}
+
+NodeRefs get_bounded_nodes(BHNode *root, PhysicsEntity *body) {
+  BoundingBox box = generate_bounding_box(body);
+  return (NodeRefs) {
+    _get_bounded_node(root, box.nw),
+    _get_bounded_node(root, box.ne),
+    _get_bounded_node(root, box.sw),
+    _get_bounded_node(root, box.se),
+  };
+}
+
+#if 0 // deprecated
+
 static void
 bhtree_apply_subcollisions(size_t i, PhysicsEntity *p_i, BHNode *node)
 {
@@ -228,7 +254,6 @@ void bhtree_apply_collisions(BHNode *node) {
   }
 }
 
-#if 0 // deprecated
 void bhtree_apply_singular_gravity(BHNode *node, vec2 sink_source) {
   (void) sink_source;
   if (!node) return;
@@ -306,5 +331,12 @@ BHSystem new_bh_system(BHNode *tree) {
   va_end(args);
 
   return (BHSystem) { tree, forces, forces_total };
+}
+
+static void node_partition(MemoryArena *arena, BHNode *node) {
+  EACH_QUAD(node->min, node->max, {
+      node->children[i + 2 * j] = bhtree_create(arena, __qmin, __qmax);
+  });
+  node->is_partitioned = true;
 }
 #endif
