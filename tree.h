@@ -30,8 +30,6 @@ typedef enum {
   QUAD_NE,
 } Quad;
 
-typedef struct { vec2 nw, ne, sw, se; } BoundingBox;
-
 static inline OccState quad_to_occ(Quad q) {
  switch (q) {
   case QUAD_SW: return OCC_SW;
@@ -53,17 +51,15 @@ static inline Quad occ_to_quad(const OccState s) {
 }
 
 typedef struct BHNode {
-  bool is_partitioned;
   struct BHNode *children[MAX_CHILDREN];
   PhysicsEntity   *bodies[NUM_QUADS];
-  size_t body_total; // total physical objects
+  bool is_partitioned;
+  size_t body_total;  // total physical objects
   OccState occ_state; // maps to quadrants
   vec2 min; vec2 max; // spatial bounds
   vec2 cm;            // center of mass
   double m;           // total mass
 } BHNode;
-
-typedef struct { BHNode *nw, *ne, *sw, *se; } NodeRefs;
 
 static inline bool body_in_bounds(vec2 min, vec2 max, vec2 pos) {
   return pos.x >= min.x && pos.x < max.x
@@ -71,14 +67,14 @@ static inline bool body_in_bounds(vec2 min, vec2 max, vec2 pos) {
 }
 
 typedef void BH_NODE_MAPPING;
-#define BH_NODE_MAP(FN, CODE)                          \
-  BH_NODE_MAPPING FN(BHNode *node) {                   \
-    if (!node) return;                                 \
-    for (size_t n = 0; n < NUM_QUADS; n++) CODE        \
-    if (node->is_partitioned) {                        \
-      for (size_t n = 0; n < MAX_CHILDREN; n++)        \
-        FN(node->children[n]);                         \
-    }                                                  \
+#define BH_NODE_MAP(FN, CODE)                                  \
+  BH_NODE_MAPPING FN(BHNode *node) {                           \
+    if (!node) return;                                         \
+    for (size_t n = 0; n < NUM_QUADS; n++) CODE                \
+    if (node->occ_state & OCC_SW) FN(node->children[QUAD_SW]); \
+    if (node->occ_state & OCC_NW) FN(node->children[QUAD_NW]); \
+    if (node->occ_state & OCC_NE) FN(node->children[QUAD_NE]); \
+    if (node->occ_state & OCC_SE) FN(node->children[QUAD_SE]); \
 }                                                    
 
 BH_NODE_MAPPING bhtree_draw(BHNode *);
@@ -108,16 +104,16 @@ static inline bool bh_condition(BHNode *n1, BHNode *n2, double theta) {
   return (vec2sub(n1->max, n1->min).x / vec2dist(n1->cm, n2->cm)) < theta;
 }
 
-
-void quad_state_log(OccState);
 BHNode *bhtree_create(MemoryArena *, vec2, vec2);
-BHNode *bhtree_build_in_arena(MemoryArena *, PhysicsEntity *, size_t);
+BHNode *bhtree_init(size_t N, PhysicsEntity[static N], MemoryArena[static 1]);
+
 void bhtree_insert(MemoryArena *, BHNode *, PhysicsEntity *);
 void bhtree_integrate(integration_flag, BHNode *, double);
 void bhtree_apply_collisions(BHNode *);
 
-BoundingBox generate_bounding_box(PhysicsEntity *);
-NodeRefs get_bounded_nodes(BHNode *, PhysicsEntity *);
+typedef struct { vec2 nw, ne, sw, se; } BoundingBox;
+BoundingBox generate_bounding_box(vec2, double);
+void draw_bounding_box(BoundingBox, GLuint);
 
 #endif // TREE_H_
 

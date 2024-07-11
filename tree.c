@@ -44,15 +44,6 @@ static Quad quad_map(BHNode *node, vec2 pos) {
   return -1;
 }
 
-void quad_state_log(OccState state) {
-  printf("QUAD STATE: { ");
-  if ((state & OCC_NW) >> 0) printf("NW, ");
-  if ((state & OCC_NE) >> 1) printf("NE, ");
-  if ((state & OCC_SW) >> 2) printf("SW, ");
-  if ((state & OCC_SE) >> 3) printf("SE, ");
-  printf("}\n");
-}
-
 void bhtree_draw_quads(BHNode *node, GLuint color) {
   if (!node) return;
   draw_quad(node);
@@ -72,6 +63,16 @@ BHNode *bhtree_create(MemoryArena *arena, vec2 min, vec2 max) {
   for (int n = 0; n < MAX_CHILDREN; n++) node->children[n] = NULL;
   for (int n = 0; n < NUM_QUADS;    n++)   node->bodies[n] = NULL;
   return node;
+}
+
+BHNode *
+bhtree_init(size_t N,
+            PhysicsEntity particles[static N],
+            MemoryArena arena[static 1])
+{
+  BHNode *bh = bhtree_create(arena, (vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
+  for (size_t n = 0; n < N; n++) bhtree_insert(arena, bh, &particles[n]);
+  return bh;
 }
 
 static vec2 quad_partition_min(vec2 min, vec2 max, Quad q) {
@@ -167,16 +168,6 @@ void bhtree_draw(BHNode *node) {
   for (size_t n = 0; n < MAX_CHILDREN; n++) bhtree_draw(node->children[n]);
 }
 
-BHNode *
-bhtree_build_in_arena(MemoryArena *arena, PhysicsEntity *particles, size_t N) {
-  if (arena->used == 0) {
-    BHNode *bh = bhtree_create(arena, (vec2){0.0, 0.0}, (vec2){WIN_W, WIN_H});
-    for (size_t n = 0; n < N; n++) bhtree_insert(arena, bh, &particles[n]);
-    return bh;
-  }
-  return NULL;
-}
-
 void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
 {
   if (!node) return;
@@ -197,39 +188,25 @@ void bhtree_integrate(integration_flag flag, BHNode *node, double dt)
     bhtree_integrate(flag, node->children[n], dt);
 }
 
-// hardcoded for circular geometry
-BoundingBox generate_bounding_box(PhysicsEntity *body) {
-  double r = body->geom.circ.R;
+BoundingBox generate_bounding_box(vec2 pos, double l) {
   return (BoundingBox) {
-    (vec2){body->q.x - r, body->q.y + r},
-    (vec2){body->q.x + r, body->q.y + r},
-    (vec2){body->q.x - r, body->q.y - r},
-    (vec2){body->q.x + r, body->q.y - r},
+    (vec2){pos.x - l, pos.y + l},
+    (vec2){pos.x + l, pos.y + l},
+    (vec2){pos.x - l, pos.y - l},
+    (vec2){pos.x + l, pos.y - l},
   };
 }
 
-static BHNode *_get_bounded_node(BHNode *node, vec2 corner) {
-  if (!node) return NULL;
-  while (node->is_partitioned) {
-    Quad quad = quad_map(node, corner);
-    node = node->children[quad];
-    if (!node) return NULL;
-  }
-  return node;
+void draw_bounding_box(BoundingBox bbox, GLuint color) {
+  draw_rectangle_filled(bbox.sw, bbox.ne, color);
 }
 
-NodeRefs get_bounded_nodes(BHNode *root, PhysicsEntity *body) {
-  BoundingBox box = generate_bounding_box(body);
-  return (NodeRefs) {
-    _get_bounded_node(root, box.nw),
-    _get_bounded_node(root, box.ne),
-    _get_bounded_node(root, box.sw),
-    _get_bounded_node(root, box.se),
-  };
-}
+
+
+
+//  ------ DEAD ZONE --------
 
 #if 0 // deprecated
-
 static void
 bhtree_apply_subcollisions(size_t i, PhysicsEntity *p_i, BHNode *node)
 {
@@ -339,4 +316,14 @@ static void node_partition(MemoryArena *arena, BHNode *node) {
   });
   node->is_partitioned = true;
 }
+
+void quad_state_log(OccState state) {
+  printf("QUAD STATE: { ");
+  if ((state & OCC_NW) >> 0) printf("NW, ");
+  if ((state & OCC_NE) >> 1) printf("NE, ");
+  if ((state & OCC_SW) >> 2) printf("SW, ");
+  if ((state & OCC_SE) >> 3) printf("SE, ");
+  printf("}\n");
+}
+
 #endif

@@ -21,7 +21,7 @@ void handle_mmove(GLFWwindow *, double, double);
 #define MAX_PARTICLES 2000
 size_t NUM_PS = 0;
 
-PhysicsEntity particles[MAX_PARTICLES];
+PhysicsEntity PARTICLES[MAX_PARTICLES];
 
 // 1 MB per frame
 #define FRAME_MEMORY_SIZE 1024 * 512
@@ -34,15 +34,15 @@ void gen_n_particle_system(size_t N) {
   INFO_LOG("ALLOCATING HEAP SIZE FOR PARTICLES:");
   printf("%zu Kb \n", (N * sizeof(PhysicsEntity)) / 1024);
   for (size_t n = 0; n < N; n++) {
-    particles[n] = new_physics_entity(
+    PARTICLES[n] = new_physics_entity(
       (vec2){(double)get_random(0, WIN_W), (double)get_random(0, WIN_H)},
       (vec2){(double)get_random(-SPD, SPD), (double)get_random(-SPD, SPD)},
       (vec2){0.0f, 0.0f},
       (double)get_random(240, 240),
       get_random_color_from_palette()
     );
-    physics_entity_bind_geometry(&particles[n], GEOM_CIRCLE, (Geometry){
-        .circ.R = 0.08 * particles[n].m
+    physics_entity_bind_geometry(&PARTICLES[n], GEOM_CIRCLE, (Geometry){
+        .circ.R = 0.08 * PARTICLES[n].m
     });
   }
   NUM_PS = N;
@@ -67,49 +67,27 @@ int main(void) {
 
   FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
   gen_n_particle_system(64);
-  ptree = bhtree_build_in_arena(FRAME_ARENA, particles, NUM_PS);
-  /* NodeRefs refs = get_bounded_nodes(ptree, &particles[4]); */
-  /* BoundingBox test_box = generate_bounding_box(&particles[4]); */
 
   while (!glfwWindowShouldClose(win)) {
+    ptree = bhtree_init(NUM_PS, PARTICLES, FRAME_ARENA);
     BEGIN_FRAME();
-      /* BEGIN_PHYSICS(dt, 8); */
-      /*   bhtree_integrate(VERLET_POS, ptree, dt); */
-      /*   bhtree_apply_boundaries(ptree); */
-      /*   bhtree_apply_collisions(ptree); */
-      /*   bhtree_integrate(VERLET_VEL, ptree, dt); */
-      /*   bhtree_clear_forces(ptree); */
-      /* END_PHYSICS(); */
-
+      BEGIN_PHYSICS(dt, 8);
+        bhtree_integrate(VERLET_POS, ptree, dt);
+        bhtree_apply_boundaries(ptree);
+        bhtree_integrate(VERLET_VEL, ptree, dt);
+        bhtree_clear_forces(ptree);
+      END_PHYSICS();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
       OPEN_SHADER(shd);
-        /* draw_rectangle_filled(vec2sub(particles[0].q, */
-        /*                                 (vec2){2 * particles[0].geom.circ.R, */
-        /*                                        2 * particles[0].geom.circ.R}), */
-        /*                         vec2add(particles[0].q, */
-        /*                                 (vec2){2 * particles[0].geom.circ.R, */
-        /*                                        2 * particles[0].geom.circ.R}), */
-        /*                         0x00FF00FF); */
-
-        /* if (refs.nw) draw_rectangle_filled(refs.nw->min, */
-        /*                                    refs.nw->max, 0xFFFFFFFF); */
-        /* if (refs.ne) draw_rectangle_filled(refs.ne->min, */
-        /*                                    refs.ne->max, 0xFFFFFFFF); */
-        /* if (refs.sw) draw_rectangle_filled(refs.sw->min, */
-        /*                                    refs.sw->max, 0xFFFFFFFF); */
-        /* if (refs.se) draw_rectangle_filled(refs.se->min, */
-        /*                                    refs.se->max, 0xFFFFFFFF); */
-
-        /* draw_rectangle_filled(test_box.sw, test_box.ne, 0x00FF00FF); */
-        draw_rectangle_filled(vec2sub(CURSOR, (vec2){20.0, 20.0}),
-                              vec2add(CURSOR, (vec2){20.0, 20.0}),
-                              0x00FF00FF);
         bhtree_draw(ptree);
         bhtree_draw_quads(ptree, 0xFFFFFFFF);
+        BoundingBox cbox = generate_bounding_box(CURSOR, 15.0);
+        draw_bounding_box(cbox, 0x00FF00AA);
       CLOSE_SHADER();
 
       glfwSwapBuffers(win);
       glfwPollEvents();
+    arena_reset(FRAME_ARENA);
     END_FRAME();
   }
 
@@ -132,7 +110,7 @@ void handle_key(GLFWwindow *win, int key, int scode, int act, int mods) {
     glfwSetWindowShouldClose(win, GLFW_TRUE);
   }
   if (key == GLFW_KEY_C) {
-    for (size_t n = 0; n < NUM_PS; n++) memset(particles, 0, sizeof(particles));
+    for (size_t n = 0; n < NUM_PS; n++) memset(PARTICLES, 0, sizeof(PARTICLES));
     NUM_PS = 0;
     ptree = NULL;
   }
@@ -145,15 +123,15 @@ void handle_mclick(GLFWwindow *win, int button, int act, int mods) {
     glfwGetCursorPos(win, &x, &y);
     printf("Generating particle @ (%f, %f)\n", x, y);
     if (NUM_PS == MAX_PARTICLES) PANIC_WITH(MAIN_EXCEEDED_MAX_BODIES);
-    particles[NUM_PS] = new_physics_entity(
+    PARTICLES[NUM_PS] = new_physics_entity(
       (vec2){x, WIN_H - y},
       (vec2){(double)get_random(-SPD, SPD), (double)get_random(-SPD, SPD)},
       (vec2){0.0f, 0.0f},
       (double)get_random(100, 100),
       get_random_color_from_palette()
     );
-    physics_entity_bind_geometry(&particles[NUM_PS], GEOM_CIRCLE, (Geometry){
-        .circ.R = 0.08 * particles[NUM_PS].m
+    physics_entity_bind_geometry(&PARTICLES[NUM_PS], GEOM_CIRCLE, (Geometry){
+        .circ.R = 0.08 * PARTICLES[NUM_PS].m
     });
     NUM_PS++;
     printf("NUMBER OF PARTICLES: %zu\n", NUM_PS);
@@ -161,6 +139,5 @@ void handle_mclick(GLFWwindow *win, int button, int act, int mods) {
 }
 
 void handle_mmove(GLFWwindow *win, double x, double y) {
-  CURSOR.x = x; CURSOR.y = WIN_H - y;
-  printf("MOUSE AT (%f, %f)\n", CURSOR.x, CURSOR.y);
+  CURSOR = (vec2) { x, WIN_H - y };
 }
