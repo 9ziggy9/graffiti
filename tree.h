@@ -109,11 +109,14 @@ BHNode *bhtree_init(size_t N, PhysicsEntity[static N], MemoryArena[static 1]);
 
 void bhtree_insert(MemoryArena *, BHNode *, PhysicsEntity *);
 void bhtree_integrate(integration_flag, BHNode *, double);
-void bhtree_apply_collisions(BHNode *);
 
 typedef struct { vec2 nw, ne, sw, se; } BoundingBox;
 BoundingBox generate_bounding_box(vec2, double);
 void draw_bounding_box(BoundingBox, GLuint);
+
+#define bhtree_apply_collisions(N) _bhtree_apply_collisions(N, N)
+void _bhtree_apply_collisions(BHNode *node, BHNode *root);
+void bhtree_apply_singular_gravity(BHNode *, vec2);
 
 typedef struct {
   size_t length;

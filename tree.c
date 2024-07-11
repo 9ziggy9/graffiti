@@ -41,6 +41,7 @@ static Quad quad_map(BHNode *node, vec2 pos) {
   EACH_QUAD(node->min, node->max, {
       if (body_in_bounds(__qmin, __qmax, pos)) return i + 2 * j;
   });
+  printf("HERE IS YOUR PROBLEM: RETURNING -1 in QUAD MAP!\n");
   return -1;
 }
 
@@ -283,6 +284,47 @@ void least_bounding_node(BHNode *node, BHNode **lnode, BoundingBox box) {
   }
 }
 
+static void
+bhtree_apply_subcollisions(size_t i, PhysicsEntity *p_i, BHNode *node)
+{
+  if (!node) return;
+  for (size_t j = 0; j < NUM_QUADS; j++) {
+    PhysicsEntity *p_j = node->bodies[j];
+    if (p_i != p_j && p_j) force_pairwise_impulsive_collision(p_i, p_j);
+  }
+  for (size_t n = 0; n < MAX_CHILDREN; n++) {
+    bhtree_apply_subcollisions(-1, p_i, node->children[n]);
+  }
+}
+
+void _bhtree_apply_collisions(BHNode *node, BHNode *root) {
+  if (!node) return;
+  for (size_t i = 0; i < NUM_QUADS; i++) {
+    PhysicsEntity *p_i = node->bodies[i];
+    if (p_i) {
+      BoundingBox pbox = generate_bounding_box(p_i->q, p_i->geom.circ.R);
+      BHNode *lnode = root;
+      least_bounding_node(root, &lnode, pbox);
+      bhtree_apply_subcollisions(i, p_i, lnode);
+    }
+  }
+  for (size_t n = 0; n < MAX_CHILDREN; n++) {
+    _bhtree_apply_collisions(node->children[n], root);
+  }
+}
+
+void bhtree_apply_singular_gravity(BHNode *node, vec2 sink_source) {
+  (void) sink_source;
+  if (!node) return;
+  for (size_t n = 0; n < NUM_QUADS; n++) {
+    PhysicsEntity *body = node->bodies[n];
+    if (body) force_singular_gravity(body, sink_source);
+  }
+  if (node->is_partitioned) {
+    for (size_t n = 0; n < MAX_CHILDREN; n++)
+      bhtree_apply_singular_gravity(node->children[n], sink_source);
+  }
+}
 
 //  ------ DEAD ZONE --------
 
