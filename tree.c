@@ -240,7 +240,7 @@ static void __acc_collision_nodes(BHNodeRef *ref, BHNode *node,
 {
   if (!node) return;
   if (bbox_corner_bound(node, box)) {
-    if (bbox_total_bound(node, box) || bbox_outbound(box)) {
+    if (bbox_total_bound(node, box)) {
       if (node->occ_state & OCC_SW)
         __acc_collision_nodes(ref, node->children[QUAD_SW], box, theta);
       if (node->occ_state & OCC_NW)
@@ -266,6 +266,23 @@ get_collision_nodes(MemoryArena arena[static 1], BHNode *root, BoundingBox box)
   __acc_collision_nodes(&ref, root, box, 0.5);
   return ref;
 }
+
+// TODO: strange behavior at boundaries!
+void least_bounding_node(BHNode *node, BHNode **lnode, BoundingBox box) {
+  if (!node) return;
+  if (bbox_total_bound(node, box)) {
+    *lnode = node;
+    if (node->occ_state & OCC_SW)
+      least_bounding_node(node->children[QUAD_SW], lnode, box);
+    if (node->occ_state & OCC_NW)
+      least_bounding_node(node->children[QUAD_NW], lnode, box);
+    if (node->occ_state & OCC_NE)
+      least_bounding_node(node->children[QUAD_NE], lnode, box);
+    if (node->occ_state & OCC_SE)
+      least_bounding_node(node->children[QUAD_SE], lnode, box);
+  }
+}
+
 
 //  ------ DEAD ZONE --------
 

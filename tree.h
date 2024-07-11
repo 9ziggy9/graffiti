@@ -121,6 +121,7 @@ typedef struct {
 } BHNodeRef;
 
 BHNodeRef get_collision_nodes(MemoryArena[static 1], BHNode *, BoundingBox);
+void least_bounding_node(BHNode *, BHNode **, BoundingBox);
 
 #endif // TREE_H_
 

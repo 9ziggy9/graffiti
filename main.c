@@ -17,7 +17,6 @@ void window_err_cb(int, const char *);
 void handle_key(GLFWwindow *, int, int, int, int);
 void handle_mclick(GLFWwindow *, int, int, int);
 void handle_mmove(GLFWwindow *, double, double);
-
 #define MAX_PARTICLES 2000
 size_t NUM_PS = 0;
 
@@ -26,8 +25,14 @@ PhysicsEntity PARTICLES[MAX_PARTICLES];
 // 1 MB per frame
 #define FRAME_MEMORY_SIZE 1024 * 512
 MemoryArena *FRAME_ARENA;
-BHNode *ptree;
+BHNode *PTREE;
 vec2 CURSOR;
+
+void ptree_rebuild(void) {
+  arena_reset(FRAME_ARENA);
+  PTREE = bhtree_init(NUM_PS, PARTICLES, FRAME_ARENA);
+}
+
 
 #define SPD 120
 void gen_n_particle_system(size_t N) {
@@ -38,8 +43,8 @@ void gen_n_particle_system(size_t N) {
       (vec2){(double)get_random(0, WIN_W), (double)get_random(0, WIN_H)},
       (vec2){(double)get_random(-SPD, SPD), (double)get_random(-SPD, SPD)},
       (vec2){0.0f, 0.0f},
-      (double)get_random(240, 240),
-      get_random_color_from_palette()
+      (double)get_random(160, 160),
+      0x7E7E7EFF
     );
     physics_entity_bind_geometry(&PARTICLES[n], GEOM_CIRCLE, (Geometry){
         .circ.R = 0.08 * PARTICLES[n].m
@@ -67,35 +72,33 @@ int main(void) {
 
   FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
   gen_n_particle_system(64);
+  PARTICLES[0].color =0x00FF00FF;
 
   while (!glfwWindowShouldClose(win)) {
-    ptree = bhtree_init(NUM_PS, PARTICLES, FRAME_ARENA);
     BEGIN_FRAME();
       BEGIN_PHYSICS(dt, 8);
-        bhtree_integrate(VERLET_POS, ptree, dt);
-        bhtree_apply_boundaries(ptree);
-        bhtree_integrate(VERLET_VEL, ptree, dt);
-        bhtree_clear_forces(ptree);
+        ptree_rebuild();
+        bhtree_integrate(VERLET_POS, PTREE, dt);
+        bhtree_apply_boundaries(PTREE);
+        bhtree_integrate(VERLET_VEL, PTREE, dt);
+        bhtree_clear_forces(PTREE);
       END_PHYSICS();
+
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-      BoundingBox cbox = generate_bounding_box(PARTICLES[0].q,
-                                               2 * PARTICLES[0].geom.circ.R);
-      BHNodeRef refs = get_collision_nodes(FRAME_ARENA, ptree, cbox);
+      BoundingBox cbox = generate_bounding_box(CURSOR, 5.0f);
+      BHNode *lnode = PTREE;
+      least_bounding_node(PTREE, &lnode, cbox);
 
       OPEN_SHADER(shd);
-        bhtree_draw(ptree);
-        bhtree_draw_quads(ptree, 0xFFFFFFFF);
-
-        for (int n = 0; n < refs.length; ++n) {
-          draw_rectangle_filled(refs.nodes[n]->min,
-                                refs.nodes[n]->max, 0xFFFF0088);
-        }
-
+        draw_rectangle_filled(lnode->min, lnode->max, 0x00FF00AA);
+        draw_bounding_box(cbox, 0x00FFFFFF);
+        bhtree_draw(PTREE);
+        bhtree_draw_quads(PTREE, 0xFFFFFFFF);
       CLOSE_SHADER();
+
       glfwSwapBuffers(win);
       glfwPollEvents();
-    arena_reset(FRAME_ARENA);
     END_FRAME();
   }
 
@@ -120,7 +123,7 @@ void handle_key(GLFWwindow *win, int key, int scode, int act, int mods) {
   if (key == GLFW_KEY_C) {
     for (size_t n = 0; n < NUM_PS; n++) memset(PARTICLES, 0, sizeof(PARTICLES));
     NUM_PS = 0;
-    ptree = NULL;
+    PTREE = NULL;
   }
 }
 
