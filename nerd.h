@@ -42,6 +42,8 @@ static inline vec2 vec2proj(vec2 v, vec2 r) {
   return vec2scale(vec2dot(v, u), u);
 }
 
+static inline double vec2area(vec2 diag) { return diag.x * diag.y; }
+
 #define X_HAT (vec2) {1.0, 0.0}
 #define Y_HAT (vec2) {0.0, 1.0}
 

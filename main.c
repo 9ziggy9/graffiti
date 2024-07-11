@@ -78,13 +78,21 @@ int main(void) {
         bhtree_clear_forces(ptree);
       END_PHYSICS();
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      BoundingBox cbox = generate_bounding_box(PARTICLES[0].q,
+                                               2 * PARTICLES[0].geom.circ.R);
+      BHNodeRef refs = get_collision_nodes(FRAME_ARENA, ptree, cbox);
+
       OPEN_SHADER(shd);
         bhtree_draw(ptree);
         bhtree_draw_quads(ptree, 0xFFFFFFFF);
-        BoundingBox cbox = generate_bounding_box(CURSOR, 15.0);
-        draw_bounding_box(cbox, 0x00FF00AA);
-      CLOSE_SHADER();
 
+        for (int n = 0; n < refs.length; ++n) {
+          draw_rectangle_filled(refs.nodes[n]->min,
+                                refs.nodes[n]->max, 0xFFFF0088);
+        }
+
+      CLOSE_SHADER();
       glfwSwapBuffers(win);
       glfwPollEvents();
     arena_reset(FRAME_ARENA);

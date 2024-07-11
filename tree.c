@@ -201,8 +201,71 @@ void draw_bounding_box(BoundingBox bbox, GLuint color) {
   draw_rectangle_filled(bbox.sw, bbox.ne, color);
 }
 
+static BHNodeRef bhnoderef_init(MemoryArena arena[static 1]) {
+#define MAX_NODES 100
+  return (BHNodeRef) {
+    .nodes = (BHNode **) arena_alloc(arena, MAX_NODES * sizeof(BHNode *)),
+  };
+#undef MAX_NODES
+}
 
+static void bhnoderef_append(BHNodeRef *ref, BHNode *node) {
+  ref->nodes[ref->length++] = node;
+}
 
+static bool bbox_total_bound(BHNode *node, BoundingBox box) {
+  return body_in_bounds(node->min, node->max, box.sw)
+      && body_in_bounds(node->min, node->max, box.nw)
+      && body_in_bounds(node->min, node->max, box.ne)
+      && body_in_bounds(node->min, node->max, box.se);
+}
+
+static bool bbox_corner_bound(BHNode *node, BoundingBox box) {
+  return body_in_bounds(node->min, node->max, box.sw)
+      || body_in_bounds(node->min, node->max, box.nw)
+      || body_in_bounds(node->min, node->max, box.ne)
+      || body_in_bounds(node->min, node->max, box.se);
+}
+
+static bool bbox_outbound(BoundingBox box) {
+  return
+     (box.sw.x < 0 || box.sw.x >= WIN_W || box.sw.y < 0 || box.sw.y >= WIN_H)
+  || (box.nw.x < 0 || box.nw.x >= WIN_W || box.nw.y < 0 || box.nw.y >= WIN_H)
+  || (box.ne.x < 0 || box.ne.x >= WIN_W || box.ne.y < 0 || box.ne.y >= WIN_H)
+  || (box.se.x < 0 || box.se.x >= WIN_W || box.se.y < 0 || box.se.y >= WIN_H);
+}
+
+static void __acc_collision_nodes(BHNodeRef *ref, BHNode *node,
+                                  BoundingBox box, double theta)
+{
+  if (!node) return;
+  if (bbox_corner_bound(node, box)) {
+    if (bbox_total_bound(node, box) || bbox_outbound(box)) {
+      if (node->occ_state & OCC_SW)
+        __acc_collision_nodes(ref, node->children[QUAD_SW], box, theta);
+      if (node->occ_state & OCC_NW)
+        __acc_collision_nodes(ref, node->children[QUAD_NW], box, theta);
+      if (node->occ_state & OCC_NE)
+        __acc_collision_nodes(ref, node->children[QUAD_NE], box, theta);
+      if (node->occ_state & OCC_SE)
+        __acc_collision_nodes(ref, node->children[QUAD_SE], box, theta);
+    } else {
+      vec2 ndiag = vec2sub(node->max, node->min);
+      vec2 bdiag = vec2sub(box.ne, box.sw);
+      if ((vec2area(ndiag) / vec2area(bdiag)) > theta) {
+        bhnoderef_append(ref, node);
+      }
+    }
+  }
+}
+
+BHNodeRef
+get_collision_nodes(MemoryArena arena[static 1], BHNode *root, BoundingBox box)
+{
+  BHNodeRef ref = bhnoderef_init(arena);
+  __acc_collision_nodes(&ref, root, box, 0.5);
+  return ref;
+}
 
 //  ------ DEAD ZONE --------
 

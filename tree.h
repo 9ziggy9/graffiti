@@ -115,6 +115,13 @@ typedef struct { vec2 nw, ne, sw, se; } BoundingBox;
 BoundingBox generate_bounding_box(vec2, double);
 void draw_bounding_box(BoundingBox, GLuint);
 
+typedef struct {
+  size_t length;
+  BHNode **nodes;
+} BHNodeRef;
+
+BHNodeRef get_collision_nodes(MemoryArena[static 1], BHNode *, BoundingBox);
+
 #endif // TREE_H_
 
 #if 0 // deprecated
