@@ -37,7 +37,7 @@ void ptree_rebuild(void) {
 
 
 #define SPD 400
-#define RAD 60
+#define RAD 100
 void gen_n_particle_system(size_t N) {
   INFO_LOG("ALLOCATING HEAP SIZE FOR PARTICLES:");
   printf("%zu Kb \n", (N * sizeof(PhysicsEntity)) / 1024);
@@ -74,7 +74,7 @@ int main(void) {
   SEED_RANDOM(9020);
 
   FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
-  gen_n_particle_system(800);
+  gen_n_particle_system(700);
 
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
@@ -83,7 +83,7 @@ int main(void) {
         bhtree_integrate(VERLET_POS, PTREE, dt);
         bhtree_apply_boundaries(PTREE);
         bhtree_apply_collisions(PTREE);
-        /* bhtree_apply_singular_gravity(PTREE, WIN_CENTER); */
+        bhtree_apply_singular_gravity(PTREE, WIN_CENTER);
         bhtree_integrate(VERLET_VEL, PTREE, dt);
         bhtree_clear_forces(PTREE);
       END_PHYSICS();
