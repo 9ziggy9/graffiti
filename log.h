@@ -54,6 +54,7 @@ typedef enum {
   BH_ILLEGAL_BODY_ACCESS,
   BH_CHILD_NODE_DOES_NOT_EXIST,
   MAIN_EXCEEDED_MAX_BODIES,
+  HASH_INIT_FAIL,
 } err_t;
 
 #endif // LOG_H_

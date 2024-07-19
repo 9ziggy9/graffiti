@@ -46,6 +46,27 @@ void physics_entity_bind_geometry(PhysicsEntity *, geometry_t, Geometry);
 #define END_PHYSICS()                           \
   __step_count--; }}
 
+typedef struct Bucket {
+  int num;
+  void *element;
+  struct Bucket *next;
+} Bucket;
+
+typedef struct SpatialHash {
+    int table_size;
+    int sector_size;
+    int num_entries;
+    Bucket **buckets;
+} SpatialHash;
+
+SpatialHash *init_spatial_hash(int sector_size);
+void add_entity_to_spatial_hash(SpatialHash *hash_table, PhysicsEntity *entity);
+
+static inline int hash_func(int x, int y, int table_size) {
+    int hash = x + y * 104729;  // large prime
+    return (abs(hash) % table_size);
+}
+
 
 #endif // PHYSICS_H_
 

@@ -76,6 +76,11 @@ int main(void) {
   FRAME_ARENA = arena_init(FRAME_MEMORY_SIZE, PAGE_PHYSICALLY);
   gen_n_particle_system(700);
 
+  SpatialHash *sp_hash = init_spatial_hash(100);
+  for (int P = 0; P < NUM_PS; P++) {
+    add_entity_to_spatial_hash(sp_hash, &PARTICLES[P]);
+  }
+
   while (!glfwWindowShouldClose(win)) {
     BEGIN_FRAME();
       ptree_rebuild();

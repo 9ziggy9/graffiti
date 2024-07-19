@@ -1,5 +1,6 @@
 #include "config.h"
 #include "physics.h"
+#include "log.h"
 
 PhysicsEntity
 new_physics_entity(vec2 q0, vec2 dq0_dt, vec2 d2q0_dt2, double m, GLuint clr) {
@@ -68,6 +69,37 @@ void force_pairwise_impulsive_collision(PhysicsEntity *pi, PhysicsEntity *pj) {
   double overlap = (pi->geom.circ.R + pi->geom.circ.R) - vec2mag(diff);
   if (overlap <= 0.0f) return;
   _resolve_impulse_collision(pi, pj, diff, overlap, 0.33f);
+}
+
+SpatialHash* init_spatial_hash(int sector_size) {  
+  if (sector_size <= 0) PANIC_WITH(HASH_INIT_FAIL);
+     
+  SpatialHash *hash_table = (SpatialHash*) malloc(sizeof(SpatialHash));
+  if (hash_table == NULL) PANIC_WITH(HASH_INIT_FAIL);
+ 
+  hash_table->sector_size = sector_size;
+  hash_table->num_entries = 0;
+  hash_table->table_size = 101;  
+
+  hash_table->buckets
+    = (Bucket **) calloc(hash_table->table_size, sizeof(PhysicsEntity*));
+  if (hash_table->buckets == NULL) PANIC_WITH(HASH_INIT_FAIL);
+
+  return hash_table;
+} 
+
+void add_entity_to_spatial_hash(SpatialHash *hash_table, PhysicsEntity *entity) {
+    int sector_x = (int)(entity->q.x / hash_table->sector_size);
+    int sector_y = (int)(entity->q.y / hash_table->sector_size);
+
+    int index = hash_func(sector_x, sector_y, hash_table->table_size);
+    
+    Bucket *list_head   = hash_table->buckets[index];
+    Bucket *new_bucket  = malloc(sizeof(Bucket));
+    new_bucket->element = entity;
+    new_bucket->next    = list_head;
+    hash_table->buckets[index] = new_bucket;
+    hash_table->num_entries++;
 }
 
 #if 0 // DEPRECATED
@@ -147,7 +179,7 @@ void physics_apply_boundaries(PhysicsEntity *ps, int num_ps, boundary_t bconds)
 }
 
 PhysicsSystem
-_new_physics_system(size_t num_entities, PhysicsEntity *entities, ...)
+_new_physics_system(size_t num_buckets, PhysicsEntity *entities, ...)
 {
   va_list args;
   va_start(args, entities);
